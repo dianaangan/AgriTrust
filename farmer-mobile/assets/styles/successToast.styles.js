@@ -1,0 +1,67 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  container: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    maxWidth: 350,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#0b6623',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f0f8f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#0b6623',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#0b6623',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  message: {
+    fontSize: 16,
+    color: '#0b6623',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  closeButton: {
+    backgroundColor: '#0b6623',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minWidth: 120,
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});
