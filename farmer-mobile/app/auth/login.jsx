@@ -1,14 +1,16 @@
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import styles from "../../assets/styles/login.styles";
 import { MaterialIcons } from '@expo/vector-icons';
+import { API_BASE_URL } from "../../constants/config";
 
 export default function Login() {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
     const handleBack = () => {
@@ -22,15 +24,67 @@ export default function Login() {
         setTimeout(() => setIsNavigating(false), 1000);
     };
 
-    const handleLogin = () => {
-        if (isNavigating) return; // Prevent multiple rapid clicks
+    const handleLogin = async () => {
+        if (isNavigating || isLoading) return; // Prevent multiple rapid clicks
         
+        // Validate inputs
+        if (!userName.trim() || !password.trim()) {
+            Alert.alert('Error', 'Please enter both username and password');
+            return;
+        }
+        
+        setIsLoading(true);
         setIsNavigating(true);
-        // Use replace to prevent multiple home screens
-        router.replace("/home");
         
-        // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 1000);
+        try {
+            const response = await fetch(`${API_BASE_URL}/farmers/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: userName.trim(),
+                    password: password.trim()
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Store token and user data (you might want to use AsyncStorage or secure storage)
+                // Pass user data to home screen
+                const userData = {
+                    firstname: result.data.farmer.firstname,
+                    lastname: result.data.farmer.lastname,
+                    email: result.data.farmer.email,
+                    username: result.data.farmer.username,
+                    verified: result.data.farmer.verified,
+                    token: result.data.token
+                };
+                
+                // Navigate directly to home screen without toast
+                router.replace({
+                    pathname: "/home",
+                    params: { userData: JSON.stringify(userData) }
+                });
+            } else {
+                // Handle different error types
+                if (response.status === 403) {
+                    Alert.alert('Account Not Verified', result.message || 'Your account is not yet verified. Please wait for admin verification.');
+                } else if (response.status === 401) {
+                    Alert.alert('Login Failed', 'Invalid username or password');
+                } else {
+                    Alert.alert('Login Failed', result.message || 'An error occurred during login');
+                }
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            Alert.alert('Network Error', 'Unable to connect to server. Please check your internet connection.');
+        } finally {
+            setIsLoading(false);
+            // Reset navigation state after a short delay
+            setTimeout(() => setIsNavigating(false), 1000);
+        }
     };
 
     const handleRegister = () => {
@@ -93,11 +147,19 @@ export default function Login() {
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                    style={styles.loginButton}
+                    style={[styles.loginButton, (isLoading || isNavigating) && styles.loginButtonDisabled]}
                     activeOpacity={0.9}
                     onPress={handleLogin}
+                    disabled={isLoading || isNavigating}
                 >
-                    <Text style={styles.loginButtonText}>Login</Text>
+                    {isLoading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="small" color="white" />
+                            <Text style={styles.loginButtonText}>Logging in...</Text>
+                        </View>
+                    ) : (
+                        <Text style={styles.loginButtonText}>Login</Text>
+                    )}
                 </TouchableOpacity>
 
                 <View style={styles.registerContainer}>

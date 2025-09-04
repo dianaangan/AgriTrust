@@ -10,6 +10,13 @@ export default StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 35,
   },
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+  },
 
   navBar: {
     flexDirection: 'row',
@@ -65,7 +72,7 @@ export default StyleSheet.create({
     fontSize: 15,
     color: colors.muted,
     lineHeight: 22,
-    marginBottom: -5,
+    marginBottom: -12,
   },
 
   section: {
@@ -140,10 +147,10 @@ export default StyleSheet.create({
   },
 
   input: {
-    height: 52,
+    height: 48,
     borderWidth: 1.5,
     borderColor: colors.outline,
-    borderRadius: 14,
+    borderRadius: 25,
     paddingHorizontal: 14,
     backgroundColor: colors.surface,
     justifyContent: 'center',

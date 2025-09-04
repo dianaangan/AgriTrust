@@ -11,6 +11,13 @@ export default StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 35,
   },
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+  },
   headerSection: {
     flex: 0,
   },

@@ -5,7 +5,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  TextInput
+  TextInput,
+  KeyboardAvoidingView,
+  Platform
 } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -281,19 +283,29 @@ export default function Register3() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Navigation Bar */}
-      <View style={styles.navBar}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <MaterialIcons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={styles.progressFill} />
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Navigation Bar */}
+        <View style={styles.navBar}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <MaterialIcons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View style={styles.progressFill} />
+            </View>
           </View>
         </View>
-      </View>
 
       {/* Header */}
       <View style={styles.header}>
@@ -359,21 +371,22 @@ export default function Register3() {
 
       {/* Removed ID upload section to match final design */}
 
-      {/* Continue Button */}
-      <TouchableOpacity 
-        style={[styles.continueButton, (isVerifying || isUploading) && styles.continueButtonDisabled]} 
-        onPress={handleRegister}
-        disabled={isVerifying || isUploading}
-      >
-        {isVerifying ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="white" />
-            <Text style={styles.continueButtonText}>Verifying...</Text>
-          </View>
-        ) : (
-          <Text style={styles.continueButtonText}>Continue</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Continue Button */}
+        <TouchableOpacity 
+          style={[styles.continueButton, (isVerifying || isUploading) && styles.continueButtonDisabled]} 
+          onPress={handleRegister}
+          disabled={isVerifying || isUploading}
+        >
+          {isVerifying ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="white" />
+              <Text style={styles.continueButtonText}>Verifying...</Text>
+            </View>
+          ) : (
+            <Text style={styles.continueButtonText}>Continue</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

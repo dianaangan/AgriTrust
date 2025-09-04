@@ -309,10 +309,10 @@ export async function registerFarmer(req, res) {
 
 export async function loginFarmer(req, res) {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    // Find farmer by email
-    const farmer = await Farmer.findOne({ email });
+    // Find farmer by username
+    const farmer = await Farmer.findOne({ username });
     if (!farmer) {
       return res.status(401).json({
         success: false,
@@ -326,6 +326,14 @@ export async function loginFarmer(req, res) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
+      });
+    }
+
+    // Check if farmer is verified
+    if (!farmer.verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account not verified. Please wait for admin verification before logging in.'
       });
     }
 
@@ -345,7 +353,8 @@ export async function loginFarmer(req, res) {
           email: farmer.email,
           username: farmer.username,
           firstname: farmer.firstname,
-          lastname: farmer.lastname
+          lastname: farmer.lastname,
+          verified: farmer.verified
         },
         token
       }
@@ -403,6 +412,78 @@ export async function updateFarmer(req, res) {
   } catch (error) {
     console.error('Error updating farmer:', error);
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function verifyFarmer(req, res) {
+  try {
+    const { id } = req.params;
+    
+    // Check if farmer exists
+    const existingFarmer = await Farmer.findById(id);
+    if (!existingFarmer) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Farmer not found" 
+      });
+    }
+    
+    // Update verification status
+    const updatedFarmer = await Farmer.findByIdAndUpdate(
+      id,
+      { verified: true },
+      { new: true }
+    ).select('-password -cardNumber -cardCVC');
+    
+    res.status(200).json({ 
+      success: true,
+      message: "Farmer verified successfully",
+      farmer: updatedFarmer
+    });
+    
+  } catch (error) {
+    console.error('Error verifying farmer:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+}
+
+export async function unverifyFarmer(req, res) {
+  try {
+    const { id } = req.params;
+    
+    // Check if farmer exists
+    const existingFarmer = await Farmer.findById(id);
+    if (!existingFarmer) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Farmer not found" 
+      });
+    }
+    
+    // Update verification status
+    const updatedFarmer = await Farmer.findByIdAndUpdate(
+      id,
+      { verified: false },
+      { new: true }
+    ).select('-password -cardNumber -cardCVC');
+    
+    res.status(200).json({ 
+      success: true,
+      message: "Farmer verification revoked successfully",
+      farmer: updatedFarmer
+    });
+    
+  } catch (error) {
+    console.error('Error unverifying farmer:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
   }
 }
 

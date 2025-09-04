@@ -87,6 +87,15 @@ export default StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    loginButtonDisabled: {
+        backgroundColor: C.muted,
+        opacity: 0.7,
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     registerContainer: {
         position: 'absolute',
         bottom: 38,

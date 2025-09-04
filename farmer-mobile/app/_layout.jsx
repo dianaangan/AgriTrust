@@ -13,6 +13,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="landing" />
           <Stack.Screen name="auth" />
+          <Stack.Screen name="home" />
         </Stack>
         <StatusBar style="dark" />
       </SafeScreen>

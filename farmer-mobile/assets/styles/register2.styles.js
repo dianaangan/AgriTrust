@@ -10,6 +10,13 @@ export default StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 35,  
   },
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+  },
 
   navBar: {
     flexDirection: 'row',
@@ -55,7 +62,7 @@ export default StyleSheet.create({
     lineHeight: 45, 
     fontWeight: '700', 
     color: colors.text,
-    marginTop: 8, 
+    marginTop: -8, 
     marginBottom: 18, 
     fontFamily: 'serif', 
     textAlign: 'left', 
@@ -90,7 +97,7 @@ export default StyleSheet.create({
   },
 
   textArea: {
-    height: 80, 
+    height: 100, 
     borderWidth: 1.5, 
     borderColor: colors.outline,
     borderRadius: 24, 
@@ -98,7 +105,7 @@ export default StyleSheet.create({
     marginTop: 4,
     paddingTop: 12,
     paddingBottom: 40,
-    fontSize: 16,
+    fontSize: 14,
     color: colors.text,
     backgroundColor: 'transparent', 
   },
@@ -200,7 +207,6 @@ export default StyleSheet.create({
     paddingVertical: 14, 
     alignItems: 'center',
     alignSelf: 'center', 
-    marginTop: 5,
   },
 
   continueButtonText: {
@@ -213,13 +219,13 @@ export default StyleSheet.create({
   loadingIndicator: {
     position: 'absolute',
     right: 50,
-    top: 12,
+    top: 18,
   },
 
   clearButton: {
     position: 'absolute',
     right: 18,
-    top: 12,
+    top: 15,
     padding: 4,
     zIndex: 1,
   },
@@ -230,10 +236,9 @@ export default StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.outline,
+    borderWidth: 0,
     borderRadius: 8,
-    marginTop: 2,
+    marginTop: -5,
     maxHeight: 160,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -241,9 +246,9 @@ export default StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
     zIndex: 9999,
   },
 
@@ -259,8 +264,7 @@ export default StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#E0E0E0',
+    borderBottomWidth: 0,
     backgroundColor: '#FFFFFF',
   },
 
