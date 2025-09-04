@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # dependencies
@@ -38,7 +37,7 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
-=======
+
 # Created by https://www.toptal.com/developers/gitignore/api/reactnative
 # Edit at https://www.toptal.com/developers/gitignore?templates=reactnative
 
@@ -296,4 +295,3 @@ buck-out/
 .fakebuckversion
 
 # End of https://www.toptal.com/developers/gitignore/api/reactnative
->>>>>>> 7145722bbb646e8dbb07055b83c6e1adfd0b3b07

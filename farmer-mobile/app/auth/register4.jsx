@@ -48,7 +48,7 @@ export default function Register4() {
     });
     
     // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 100);
+    setTimeout(() => setIsNavigating(false), 1000);
   };
 
   const validateForm = () => {
@@ -102,7 +102,6 @@ export default function Register4() {
         }
       }
     } catch (error) {
-      console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
       setIsUploading(false);
@@ -153,7 +152,6 @@ export default function Register4() {
       // If it's already a URL, return as is
       return imageUri;
     } catch (error) {
-      console.error('Error converting image to base64:', error);
       // Fallback: return the original URI
       return imageUri;
     }
@@ -177,13 +175,13 @@ export default function Register4() {
       setIsRegistering(false);
       setIsUploading(false);
     } catch (error) {
-      console.error('Error clearing forms:', error);
     }
   };
 
   const handleSuccessToastClose = () => {
     setShowSuccessToast(false);
     clearAllForms();
+    // Use replace to prevent multiple landing screens
     router.replace('/landing');
   };
 
@@ -245,7 +243,6 @@ export default function Register4() {
       setShowSuccessToast(true);
       
     } catch (error) {
-      console.error('Registration error:', error);
       Alert.alert(
         'Registration Failed', 
         error.message || 'An error occurred during registration. Please try again.',

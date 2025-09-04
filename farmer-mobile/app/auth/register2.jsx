@@ -134,14 +134,6 @@ export default function Register2() {
         }
       }
     } catch (error) {
-      console.error('Network error fetching suggestions:', error);
-      
-      // Add more specific error logging for debugging
-      if (error.message.includes('Network request failed')) {
-        console.error('Backend server might be down or unreachable');
-        console.error('Check if backend is running on:', API_BASE_URL);
-        console.error('Make sure your device and backend are on the same network');
-      }
       
       if (locationType === 'farm') {
         setFarmLocationSuggestions([]);
@@ -160,7 +152,6 @@ export default function Register2() {
   const handleLocationChange = (key, value) => {
     // Don't update if we're currently selecting a suggestion
     if (isSelectingSuggestion) {
-      console.log('Skipping handleLocationChange - suggestion being selected');
       return;
     }
     
@@ -201,8 +192,6 @@ export default function Register2() {
     // Set flag to prevent handleLocationChange from interfering
     setIsSelectingSuggestion(true);
     
-    // Debug: Log the suggestion object to see its structure
-    console.log('Selected suggestion:', suggestion);
     
     // Try different possible text fields from the suggestion
     let selectedText = '';
@@ -231,17 +220,14 @@ export default function Register2() {
     // If we still don't have text, use a fallback
     if (!selectedText) {
       selectedText = 'Selected location';
-      console.warn('Could not extract text from suggestion:', suggestion);
     }
     
-    console.log('Selected text:', selectedText);
     
     const key = locationType === 'farm' ? 'farmLocation' : 'pickupLocation';
     
     // Update form state directly
     setForm(prev => {
       const newForm = { ...prev, [key]: selectedText };
-      console.log(`Updated form.${key}:`, newForm[key]);
       return newForm;
     });
     
@@ -311,7 +297,6 @@ export default function Register2() {
         }
       }
     } catch (error) {
-      console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
@@ -336,7 +321,7 @@ export default function Register2() {
     });
     
     // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 100);
+    setTimeout(() => setIsNavigating(false), 1000);
   };
   
   const handleContinue = () => {
@@ -344,7 +329,8 @@ export default function Register2() {
     
     if (validateForm()) {
       setIsNavigating(true);
-      router.push({
+      // Use replace to prevent multiple register3 screens
+      router.replace({
         pathname: "/auth/register3",
         params: { userData: JSON.stringify({ ...userData, ...form, locationDetails }) }
       });

@@ -11,20 +11,22 @@ export default function Landing() {
         if (isNavigating) return; // Prevent multiple rapid clicks
         
         setIsNavigating(true);
-        router.push("/auth/login");
+        // Use replace to prevent multiple login screens
+        router.replace("/auth/login");
         
         // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 100);
+        setTimeout(() => setIsNavigating(false), 1000);
     };
 
     const handleGetStarted = () => {
         if (isNavigating) return; // Prevent multiple rapid clicks
         
         setIsNavigating(true);
-        router.push("/auth/register1");
+        // Use replace to prevent multiple register1 screens
+        router.replace("/auth/register1");
         
         // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 100);
+        setTimeout(() => setIsNavigating(false), 1000);
     };
 
     return (

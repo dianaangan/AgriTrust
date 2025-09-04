@@ -15,30 +15,33 @@ export default function Login() {
         if (isNavigating) return; // Prevent multiple rapid clicks
         
         setIsNavigating(true);
-        router.back();
+        // Use replace to go back to landing to prevent multiple instances
+        router.replace("/landing");
         
         // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 100);
+        setTimeout(() => setIsNavigating(false), 1000);
     };
 
     const handleLogin = () => {
         if (isNavigating) return; // Prevent multiple rapid clicks
         
         setIsNavigating(true);
-        router.push("/home");
+        // Use replace to prevent multiple home screens
+        router.replace("/home");
         
         // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 100);
+        setTimeout(() => setIsNavigating(false), 1000);
     };
 
     const handleRegister = () => {
         if (isNavigating) return; // Prevent multiple rapid clicks
         
         setIsNavigating(true);
-        router.push("/auth/register1");
+        // Use replace to prevent multiple register1 screens
+        router.replace("/auth/register1");
         
         // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 100);
+        setTimeout(() => setIsNavigating(false), 1000);
     };
 
     return (

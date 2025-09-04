@@ -135,7 +135,6 @@ export default function Register3() {
         }
       }
     } catch (error) {
-      console.error('Error picking image:', error);
       setErrors(prev => ({ ...prev, cardNumber: 'Valid card number' }));
     } finally {
       setIsUploading(false);
@@ -174,8 +173,6 @@ export default function Register3() {
         name: userData.fullName || userData.fullname || 'Cardholder'
       };
 
-      console.log('Sending request to:', `${API_BASE_URL}/stripe/verify-billing`);
-      console.log('Request data:', billingData);
 
       const response = await fetch(`${API_BASE_URL}/stripe/verify-billing`, {
         method: 'POST',
@@ -185,19 +182,15 @@ export default function Register3() {
         body: JSON.stringify(billingData),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
 
       // Check if response is JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const textResponse = await response.text();
-        console.error('Non-JSON response received:', textResponse);
         throw new Error(`Server returned ${response.status}: ${textResponse.substring(0, 100)}...`);
       }
 
       const result = await response.json();
-      console.log('Response data:', result);
 
       if (result.success) {
         // Clear any existing card errors
@@ -220,7 +213,6 @@ export default function Register3() {
         return { success: false, error: result.message };
       }
     } catch (error) {
-      console.error('Billing verification error:', error);
       
       // Set card number error for network/server issues
       setErrors(prev => ({
@@ -243,7 +235,7 @@ export default function Register3() {
     });
     
     // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 100);
+    setTimeout(() => setIsNavigating(false), 1000);
   };
   
   const handleRegister = async () => {
@@ -272,7 +264,8 @@ export default function Register3() {
             billingVerified: true
           };
           
-          router.push({
+          // Use replace to prevent multiple register4 screens
+          router.replace({
             pathname: '/auth/register4',
             params: { userData: JSON.stringify({ ...userData, ...cardData }) }
           });

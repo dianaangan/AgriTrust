@@ -42,7 +42,6 @@ export const detectBackendIP = async () => {
       });
       
       if (response.ok) {
-        console.log(`✅ Backend found at: ${ip}:${port}`);
         return `http://${ip}:${port}/api`;
       }
     } catch (error) {
@@ -52,7 +51,6 @@ export const detectBackendIP = async () => {
   }
   
   // Fallback to default
-  console.log('⚠️ Using fallback API URL');
   return API_CONFIG.BASE_URL;
 };
 
@@ -67,7 +65,6 @@ export const getUserConfigurableAPI = async () => {
       return userAPI;
     }
   } catch (error) {
-    console.log('AsyncStorage not available, using default');
   }
   
   return API_CONFIG.BASE_URL;

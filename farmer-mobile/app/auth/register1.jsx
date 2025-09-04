@@ -71,7 +71,7 @@ export default function Register1() {
     router.replace('/landing');
     
     // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 100);
+    setTimeout(() => setIsNavigating(false), 1000);
   };
   
   const handleContinue = () => {
@@ -79,7 +79,8 @@ export default function Register1() {
     
     if (validateForm()) {
       setIsNavigating(true);
-      router.push({
+      // Use replace to prevent multiple register2 screens
+      router.replace({
         pathname: "/auth/register2",
         params: { userData: JSON.stringify({ ...userData, ...form }) }
       });
@@ -93,10 +94,11 @@ export default function Register1() {
     if (isNavigating) return; // Prevent multiple rapid clicks
     
     setIsNavigating(true);
-    router.push("/auth/login");
+    // Use replace to prevent multiple login screens
+    router.replace("/auth/login");
     
     // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 100);
+    setTimeout(() => setIsNavigating(false), 1000);
   };
 
   return (
