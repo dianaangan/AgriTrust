@@ -1,22 +1,17 @@
-import React from 'react';
-import { SafeAreaView, StatusBar, Platform } from 'react-native';
-import getColors from '../constants/colors';
+import { View, StyleSheet } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import COLOR from '../constants/colors';
 
-const colors = getColors('light');
+export default function SafeScreen({children}) {
+    const insets = useSafeAreaInsets();
 
-const SafeScreen = ({ children, style, statusBarStyle = 'light-content', backgroundColor = colors.primary }) => {
-  return (
-    <>
-      <StatusBar 
-        barStyle={statusBarStyle} 
-        backgroundColor={backgroundColor}
-        translucent={Platform.OS === 'android'}
-      />
-      <SafeAreaView style={[{ flex: 1, backgroundColor }, style]}>
-        {children}
-      </SafeAreaView>
-    </>
-  );
-};
+    return <View style={[styles.container, 
+    {paddingTop: insets.top}]}>{children}</View>;
+}
 
-export default SafeScreen;
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: COLOR.background
+    }
+});

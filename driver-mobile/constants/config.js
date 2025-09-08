@@ -13,7 +13,7 @@ NETWORK: 'http://192.168.1.2:5001/api',
   
   // Auto-detect based on environment
   get BASE_URL() {
-    return this.NETWORK; // Use network IP for mobile app
+    return this.LOCAL; // Use localhost for development
   }
 };
 

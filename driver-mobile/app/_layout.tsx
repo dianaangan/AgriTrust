@@ -1,21 +1,22 @@
 import { Stack } from "expo-router";
-import getColors from "../constants/colors";
-
-const colors = getColors('light');
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import SafeScreen from "../components/SafeScreen";
+import { StatusBar } from "expo-status-bar";
 
 export default function RootLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.primary },
-        animation: 'slide_from_right',
-      }}
-    >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="landing" />
-      <Stack.Screen name="home" />
-      <Stack.Screen name="auth" />
-    </Stack>
+    <SafeAreaProvider>
+      <SafeScreen>
+        <Stack 
+          screenOptions={{ headerShown: false }}
+          initialRouteName="landing"
+        >
+          <Stack.Screen name="landing" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="home" />
+        </Stack>
+        <StatusBar style="dark" />
+      </SafeScreen>
+    </SafeAreaProvider>
   );
 }

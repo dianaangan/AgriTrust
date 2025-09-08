@@ -30,6 +30,11 @@ export default function Register2() {
   const userData = params.userData ? JSON.parse(params.userData) : {};
   
   const [form, setForm] = useState({
+    vehicleType: userData.vehicleType || "",
+    vehicleModel: userData.vehicleModel || "",
+    vehicleYear: userData.vehicleYear || "",
+    vehicleColor: userData.vehicleColor || "",
+    licensePlate: userData.licensePlate || "",
     profileImage: userData.profileImage || null,
     profileImageName: userData.profileImageName || "",
     licenseFrontImage: userData.licenseFrontImage || null,
@@ -45,6 +50,11 @@ export default function Register2() {
   const validateForm = () => {
     const newErrors = {};
     const validations = {
+      vehicleType: () => !form.vehicleType.trim() && "Vehicle type is required",
+      vehicleModel: () => !form.vehicleModel.trim() && "Vehicle model is required",
+      vehicleYear: () => !form.vehicleYear.trim() && "Vehicle year is required",
+      vehicleColor: () => !form.vehicleColor.trim() && "Vehicle color is required",
+      licensePlate: () => !form.licensePlate.trim() && "License plate is required",
       profileImage: () => !form.profileImage && "Profile image is required",
       licenseFrontImage: () => !form.licenseFrontImage && "Driver's license front image is required",
       licenseBackImage: () => !form.licenseBackImage && "Driver's license back image is required"
@@ -187,14 +197,70 @@ export default function Register2() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Upload Profile &{"\n"}Driver's License</Text>
+        <Text style={styles.title}>Enter Vehicle Details{"\n"} & Upload Documents</Text>
         <Text style={styles.subtitle}>
-          Please upload your profile image and clear front and back images of your driver's license.
+          Please provide your vehicle information and upload required documents.
         </Text>
       </View>
 
       {/* Form Fields */}
       <View style={styles.formContainer}>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, errors.vehicleType && styles.inputError]}
+            placeholder={errors.vehicleType || "Vehicle Type (e.g., Car, Motorcycle, Van)"}
+            placeholderTextColor={errors.vehicleType ? "#ff3333" : "#999999"}
+            value={errors.vehicleType ? "" : form.vehicleType}
+            onChangeText={(value) => handleChange('vehicleType', value)}
+            onFocus={() => handleFocus('vehicleType')}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, errors.vehicleModel && styles.inputError]}
+            placeholder={errors.vehicleModel || "Vehicle Model"}
+            placeholderTextColor={errors.vehicleModel ? "#ff3333" : "#999999"}
+            value={errors.vehicleModel ? "" : form.vehicleModel}
+            onChangeText={(value) => handleChange('vehicleModel', value)}
+            onFocus={() => handleFocus('vehicleModel')}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, errors.vehicleYear && styles.inputError]}
+            placeholder={errors.vehicleYear || "Vehicle Year"}
+            placeholderTextColor={errors.vehicleYear ? "#ff3333" : "#999999"}
+            value={errors.vehicleYear ? "" : form.vehicleYear}
+            onChangeText={(value) => handleChange('vehicleYear', value)}
+            keyboardType="numeric"
+            onFocus={() => handleFocus('vehicleYear')}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, errors.vehicleColor && styles.inputError]}
+            placeholder={errors.vehicleColor || "Vehicle Color"}
+            placeholderTextColor={errors.vehicleColor ? "#ff3333" : "#999999"}
+            value={errors.vehicleColor ? "" : form.vehicleColor}
+            onChangeText={(value) => handleChange('vehicleColor', value)}
+            onFocus={() => handleFocus('vehicleColor')}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, errors.licensePlate && styles.inputError]}
+            placeholder={errors.licensePlate || "License Plate Number"}
+            placeholderTextColor={errors.licensePlate ? "#ff3333" : "#999999"}
+            value={errors.licensePlate ? "" : form.licensePlate}
+            onChangeText={(value) => handleChange('licensePlate', value)}
+            onFocus={() => handleFocus('licensePlate')}
+          />
+        </View>
+
         {/* Profile Image Upload Section */}
         <View style={styles.inputContainer}>
           <Text style={styles.imageLabel}>Profile Image</Text>

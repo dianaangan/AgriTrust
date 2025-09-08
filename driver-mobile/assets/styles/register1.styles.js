@@ -1,130 +1,117 @@
-import { StyleSheet, Dimensions } from 'react-native';
-import getColors from '../../constants/colors';
+import { StyleSheet, Dimensions } from "react-native";
+import getColors from "../../constants/colors";
 
-const colors = getColors('light');
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
+const colors = getColors("light");
 
-const styles = StyleSheet.create({
+export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
+    paddingHorizontal: 20,
+    paddingTop: 35,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flexGrow: 1,
   },
   headerSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
+    flex: 0,
   },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 24,
+    backgroundColor: colors.primaryDark,
+    alignItems: "center",
+    justifyContent: "center",
   },
   progressWrapper: {
     flex: 1,
-    marginLeft: 20,
+    paddingLeft: 12,
+    paddingRight: 8,
   },
   progressTrack: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
+    width: "100%",
+    height: 12,
+    backgroundColor: colors.track,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
-    width: '25%',
-    backgroundColor: colors.white,
-    borderRadius: 2,
+    height: "100%",
+    width: "35%",
+    backgroundColor: colors.primary,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.white,
-    lineHeight: 38,
+    fontSize: 38,
+    lineHeight: 45,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 15,
+    fontFamily: "serif",
+    textAlign: "left",
   },
   formSection: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 32,
-    paddingHorizontal: 20,
-  },
-  form: {
-    flex: 1,
+    justifyContent: "center",
   },
   input: {
-    height: 56,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: colors.outline,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    marginVertical: 5,
     color: colors.text,
-    backgroundColor: colors.white,
-    marginBottom: 16,
+    backgroundColor: "transparent",
   },
+
   inputError: {
-    borderColor: colors.error,
-    backgroundColor: '#FFEBEE',
+    borderColor: '#FF3B30', // Red border for error state
   },
   bottomSection: {
-    paddingBottom: 20,
+    flex: 0,
+    marginTop: 30,
+    paddingBottom: 25,
   },
   continueButton: {
-    height: 56,
+    width: width - 48,
+    maxWidth: 520,
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  continueButtonDisabled: {
-    backgroundColor: colors.gray,
-    shadowOpacity: 0,
-    elevation: 0,
+    borderRadius: 28,
+    paddingVertical: 14,
+    alignItems: "center",
+    alignSelf: "center",
   },
   continueText: {
-    color: colors.white,
+    color: "#fff",
+    fontWeight: "700",
     fontSize: 16,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   loginRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
   },
   loginText: {
-    fontSize: 16,
-    color: colors.textSecondary,
+    fontSize: 12,
+    color: colors.muted,
   },
   loginLink: {
-    fontSize: 16,
+    fontSize: 12,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "700",
+    marginLeft: 4,
   },
 });
-
-export default styles;

@@ -51,7 +51,7 @@ export default function Login() {
         // Validate inputs
         const newErrors = {};
         if (!userName.trim()) {
-            newErrors.userName = 'Username is required';
+            newErrors.userName = 'Email is required';
         }
         if (!password.trim()) {
             newErrors.password = 'Password is required';
@@ -97,7 +97,7 @@ export default function Login() {
                     params: { userData: JSON.stringify(userData) }
                 });
             } else {
-                
+                // Handle different error types with inline errors
                 if (response.status === 403) {
                     setErrors({ general: result.message || 'Your account is not yet verified. Please wait for admin verification.' });
                 } else if (response.status === 401) {
@@ -129,98 +129,90 @@ export default function Login() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.headerSection}>
-                <View style={styles.topRow}>
-                    <TouchableOpacity 
-                        onPress={handleBack} 
-                        style={styles.backButton}
-                        activeOpacity={0.8}
-                    >
-                        <MaterialIcons name="arrow-back" size={18} color="#fff" />
-                    </TouchableOpacity>
+            <TouchableOpacity 
+                style={styles.backButton} 
+                onPress={handleBack}
+                activeOpacity={0.8}
+            >
+                <MaterialIcons name="arrow-back" size={18} color="#fff" />
+            </TouchableOpacity>
 
-                    <View style={styles.progressWrapper}>
-                        <View style={styles.progressTrack}>
-                            <View style={styles.progressFill} />
-                        </View>
-                    </View>
+            <View style={styles.contentContainer}>
+                <Text style={styles.welcomeText}>Hey Driver,</Text>
+                <Text style={styles.welcomeSubText}>Welcome to{'\n'}AgriTrust</Text>
+
+                <View style={[styles.inputWrapper, errors.userName && styles.inputWrapperError]}>
+                    <MaterialIcons name="email" size={24} color={errors.userName ? "#ff3333" : "#0b6623"} />
+                    <TextInput
+                        style={[styles.input, errors.userName && styles.inputError]}
+                        placeholder={errors.userName || "Email"}
+                        placeholderTextColor={errors.userName ? "#ff3333" : "#999999"}
+                        value={errors.userName ? "" : userName}
+                        onChangeText={(value) => handleChange('userName', value)}
+                        onFocus={() => handleFocus('userName')}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
                 </View>
 
-                <Text style={styles.title}>Welcome{"\n"}Back</Text>
-                <Text style={styles.subtitle}>Sign in to your driver account</Text>
-            </View>
-
-            <View style={styles.formSection}>
-                <View style={styles.form}>
-                    {errors.general && (
-                        <View style={styles.errorContainer}>
-                            <Text style={styles.errorText}>{errors.general}</Text>
-                        </View>
-                    )}
-
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            placeholder={errors.userName || "Email"}
-                            placeholderTextColor={errors.userName ? "#ff3333" : "#6a6a6a"}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            keyboardType="email-address"
-                            value={errors.userName ? "" : userName}
-                            onChangeText={(t) => handleChange("userName", t)}
-                            onFocus={() => handleFocus("userName")}
-                            style={[styles.input, errors.userName && styles.inputError]}
-                            returnKeyType="next"
+                <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
+                    <MaterialIcons name="lock-outline" size={24} color={errors.password ? "#ff3333" : "#0b6623"} />
+                    <TextInput
+                        style={[styles.input, errors.password && styles.inputError]}
+                        placeholder={errors.password || "Password"}
+                        placeholderTextColor={errors.password ? "#ff3333" : "#999999"}
+                        value={errors.password ? "" : password}
+                        onChangeText={(value) => handleChange('password', value)}
+                        onFocus={() => handleFocus('password')}
+                        secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                        <MaterialIcons 
+                            name={showPassword ? "visibility" : "visibility-off"} 
+                            size={24} 
+                            color={errors.password ? "#ff3333" : "#666666"} 
                         />
-                    </View>
+                    </TouchableOpacity>
+                </View>
 
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            placeholder={errors.password || "Password"}
-                            placeholderTextColor={errors.password ? "#ff3333" : "#6a6a6a"}
-                            secureTextEntry={!showPassword}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            value={errors.password ? "" : password}
-                            onChangeText={(t) => handleChange("password", t)}
-                            onFocus={() => handleFocus("password")}
-                            style={[styles.input, errors.password && styles.inputError]}
-                            returnKeyType="done"
-                        />
-                        <TouchableOpacity
-                            style={styles.eyeIcon}
-                            onPress={() => setShowPassword(!showPassword)}
+                {errors.general && (
+                    <View style={styles.errorContainer}>
+                        <Text style={styles.errorText}>{errors.general}</Text>
+                        <TouchableOpacity 
+                            style={styles.closeButton}
+                            onPress={() => setErrors(prev => ({ ...prev, general: null }))}
+                            activeOpacity={0.7}
                         >
-                            <MaterialIcons 
-                                name={showPassword ? "visibility" : "visibility-off"} 
-                                size={20} 
-                                color="#6a6a6a" 
-                            />
+                            <MaterialIcons name="close" size={20} color="#FF3B30" />
                         </TouchableOpacity>
                     </View>
-                </View>
+                )}
 
-                <View style={styles.bottomSection}>
-                    <TouchableOpacity 
-                        style={[styles.loginButton, (isLoading || isNavigating) && styles.loginButtonDisabled]} 
-                        onPress={handleLogin}
-                        disabled={isLoading || isNavigating}
-                    >
-                        {isLoading ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="small" color="#ffffff" />
-                                <Text style={styles.loginText}>Signing in...</Text>
-                            </View>
-                        ) : (
-                            <Text style={styles.loginText}>Sign In</Text>
-                        )}
+                <TouchableOpacity>
+                    <Text style={styles.forgotPassword}>Forgot password?</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.loginButton, (isLoading || isNavigating) && styles.loginButtonDisabled]}
+                    activeOpacity={0.9}
+                    onPress={handleLogin}
+                    disabled={isLoading || isNavigating}
+                >
+                    {isLoading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="small" color="white" />
+                            <Text style={styles.loginButtonText}>Logging in...</Text>
+                        </View>
+                    ) : (
+                        <Text style={styles.loginButtonText}>Login</Text>
+                    )}
+                </TouchableOpacity>
+
+                <View style={styles.registerContainer}>
+                    <Text style={styles.registerText}>Don't have an account?</Text>
+                    <TouchableOpacity onPress={handleRegister}>
+                        <Text style={styles.registerLink}>Register</Text>
                     </TouchableOpacity>
-
-                    <View style={styles.registerRow}>
-                        <Text style={styles.registerText}>Don't have an account? </Text>
-                        <TouchableOpacity onPress={handleRegister}>
-                            <Text style={styles.registerLink}>Register</Text>
-                        </TouchableOpacity>
-                    </View>
                 </View>
             </View>
         </SafeAreaView>

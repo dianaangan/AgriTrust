@@ -1,6 +1,7 @@
 const colors = {
   light: {
     primary: '#0b6623',
+    primaryDark: '#004d00',
     secondary: '#4CAF50',
     accent: '#8BC34A',
     background: '#FFFFFF',
@@ -9,6 +10,9 @@ const colors = {
     textSecondary: '#666666',
     textLight: '#999999',
     border: '#E0E0E0',
+    outline: '#E0E0E0',
+    track: '#E0E0E0',
+    muted: '#999999',
     error: '#FF3B30',
     success: '#4CAF50',
     warning: '#FF9800',
@@ -29,6 +33,7 @@ const colors = {
   },
   dark: {
     primary: '#4CAF50',
+    primaryDark: '#2E7D32',
     secondary: '#8BC34A',
     accent: '#CDDC39',
     background: '#121212',
@@ -37,6 +42,9 @@ const colors = {
     textSecondary: '#B3B3B3',
     textLight: '#808080',
     border: '#333333',
+    outline: '#333333',
+    track: '#333333',
+    muted: '#808080',
     error: '#FF5252',
     success: '#4CAF50',
     warning: '#FFB74D',

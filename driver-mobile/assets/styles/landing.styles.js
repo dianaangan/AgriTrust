@@ -1,126 +1,85 @@
-import { StyleSheet, Dimensions } from 'react-native';
-import getColors from '../../constants/colors';
-
-const colors = getColors('light');
+import { StyleSheet, Dimensions, Platform } from 'react-native';
 const { width, height } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primary,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 20,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logo: {
-    width: 50,
-    height: 50,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.white,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  imageContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    maxHeight: height * 0.4,
-  },
-  heroImage: {
-    width: width * 0.8,
-    height: height * 0.3,
-  },
-  textContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 20,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.white,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  buttonContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  loginButton: {
-    height: 56,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  loginButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  registerButton: {
-    height: 56,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
+export default StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  registerButtonText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  footerText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+    contentContainer: {
+        flex: 1,
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+    },
+    imageContainer: {
+        width: '100%',
+        height: height * 0.45,
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        marginTop: 150,
+    },
+    illustration: {
+        width: width * 0.62,
+        height: height * 0.30,
+        resizeMode: 'contain',
+    },
+    bottomContent: {
+        width: '100%',
+        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'flex-end',
+        marginBottom: 24,
+    },
+    title: {
+        fontSize: 36,
+        fontWeight: '700',
+        color: '#000000',
+        marginTop: 16,
+        textAlign: 'center',
+        // try to give a serif-like look; platform fallback if not available
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    },
+    description: {
+        fontSize: 12,
+        color: '#666666',
+        lineHeight: 16,
+        textAlign: 'center',
+        width: '72%',
+        marginTop: 8,
+    },
+    buttonContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginTop: 120,
+        marginBottom: 20
+    },
+    getStartedButton: {
+        width: '86%',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#0b6623', // green outline
+        borderRadius: 28,
+        paddingVertical: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    getStartedText: {
+        color: '#0b6623',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    loginButton: {
+        width: '86%',
+        backgroundColor: '#0b6623', // filled green
+        borderRadius: 28,
+        paddingVertical: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    loginText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
 });
-
-export default styles;
