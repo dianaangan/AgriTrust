@@ -54,6 +54,7 @@ export default function Register2() {
   const timeoutRef = useRef(null);
   const [isSelectingSuggestion, setIsSelectingSuggestion] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
 
 
@@ -272,6 +273,8 @@ export default function Register2() {
 
   const handleImageUpload = async () => {
     try {
+      setIsUploadingImage(true);
+      
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -300,6 +303,8 @@ export default function Register2() {
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to pick image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -309,17 +314,20 @@ export default function Register2() {
       profileImage: null,
       profileImageName: ""
     }));
-    // Set error if image is required
-    setErrors(prev => ({ ...prev, profileImage: "Profile image is required" }));
+    // Clear any existing error when removing image
+    if (errors.profileImage) {
+      setErrors(prev => ({ ...prev, profileImage: null }));
+    }
   };
 
   const handleBack = () => {
     if (isNavigating) return; // Prevent multiple rapid clicks
     
     setIsNavigating(true);
-    router.push({
+    // Use replace to prevent navigation stack issues but preserve register1 data
+    router.replace({
       pathname: "/auth/register1",
-      params: { userData: JSON.stringify({ ...userData, ...form, locationDetails }) }
+      params: { userData: JSON.stringify({ ...userData }) }
     });
     
     // Reset navigation state after a short delay
@@ -327,7 +335,7 @@ export default function Register2() {
   };
   
   const handleContinue = () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
+    if (isNavigating || isUploadingImage) return; // Prevent multiple rapid clicks
     
     if (validateForm()) {
       setIsNavigating(true);
@@ -564,13 +572,18 @@ export default function Register2() {
             <TouchableOpacity 
               style={[styles.imageUploadButton, errors.profileImage && styles.inputError]} 
               onPress={handleImageUpload}
+              disabled={isUploadingImage}
             >
-                             <View style={styles.imageUploadContent}>
-                 <Ionicons name="image-outline" size={24} color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
-                 <Text style={[styles.imageUploadText, errors.profileImage && styles.errorText]}>
-                   {errors.profileImage || "Browse (Profile Image)"}
-                 </Text>
-               </View>
+              <View style={styles.imageUploadContent}>
+                {isUploadingImage ? (
+                  <ActivityIndicator size="small" color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
+                ) : (
+                  <Ionicons name="image-outline" size={24} color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
+                )}
+                <Text style={[styles.imageUploadText, errors.profileImage && styles.errorText]}>
+                  {isUploadingImage ? "Uploading..." : (errors.profileImage || "Browse (Profile Image)")}
+                </Text>
+              </View>
             </TouchableOpacity>
                      ) : (
              <View style={[styles.imagePreviewContainer, errors.profileImage && styles.inputError]}>
@@ -587,7 +600,11 @@ export default function Register2() {
         </View>
       </View>
       
-        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+        <TouchableOpacity 
+          style={[styles.continueButton, isNavigating && styles.continueButtonDisabled]} 
+          onPress={handleContinue}
+          disabled={isNavigating}
+        >
           <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
       </ScrollView>

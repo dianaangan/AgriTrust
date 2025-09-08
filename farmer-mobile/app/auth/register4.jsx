@@ -33,7 +33,8 @@ export default function Register4() {
   });
 
   const [errors, setErrors] = useState({});
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingFront, setIsUploadingFront] = useState(false);
+  const [isUploadingBack, setIsUploadingBack] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -44,9 +45,10 @@ export default function Register4() {
     if (isNavigating) return; // Prevent multiple rapid clicks
     
     setIsNavigating(true);
-    router.push({
+    // Use replace to prevent navigation stack issues but preserve previous data
+    router.replace({
       pathname: "/auth/register3",
-      params: { userData: JSON.stringify({ ...userData, ...form }) }
+      params: { userData: JSON.stringify({ ...userData }) }
     });
     
     // Reset navigation state after a short delay
@@ -71,7 +73,12 @@ export default function Register4() {
 
   const handleImageUpload = async (imageType) => {
     try {
-      setIsUploading(true);
+      // Set the appropriate loading state based on image type
+      if (imageType === 'front') {
+        setIsUploadingFront(true);
+      } else {
+        setIsUploadingBack(true);
+      }
       
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -106,7 +113,12 @@ export default function Register4() {
     } catch (error) {
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
-      setIsUploading(false);
+      // Clear the appropriate loading state based on image type
+      if (imageType === 'front') {
+        setIsUploadingFront(false);
+      } else {
+        setIsUploadingBack(false);
+      }
     }
   };
 
@@ -114,7 +126,10 @@ export default function Register4() {
     const fieldName = imageType === 'front' ? 'frontIdImage' : 'backIdImage';
     const fileNameField = imageType === 'front' ? 'frontIdImageName' : 'backIdImageName';
     setForm(prev => ({ ...prev, [fieldName]: null, [fileNameField]: "" }));
-    setErrors(prev => ({ ...prev, [fieldName]: `${imageType === 'front' ? 'Front' : 'Back'} ID image is required` }));
+    // Clear any existing error when removing image
+    if (errors[fieldName]) {
+      setErrors(prev => ({ ...prev, [fieldName]: null }));
+    }
   };
 
   // Helper function to convert image URI to base64
@@ -175,7 +190,8 @@ export default function Register4() {
       
       // Clear any loading states
       setIsRegistering(false);
-      setIsUploading(false);
+      setIsUploadingFront(false);
+      setIsUploadingBack(false);
     } catch (error) {
     }
   };
@@ -293,12 +309,16 @@ export default function Register4() {
             <TouchableOpacity 
               style={[styles.imageUploadButton, errors.frontIdImage && styles.inputError]} 
               onPress={() => handleImageUpload('front')}
-              disabled={isUploading}
+              disabled={isUploadingFront}
             >
               <View style={styles.imageUploadContent}>
-                <Ionicons name="image-outline" size={24} color={errors.frontIdImage ? "#FF3B30" : "#0b6623"} />
+                {isUploadingFront ? (
+                  <ActivityIndicator size="small" color={errors.frontIdImage ? "#FF3B30" : "#0b6623"} />
+                ) : (
+                  <Ionicons name="image-outline" size={24} color={errors.frontIdImage ? "#FF3B30" : "#0b6623"} />
+                )}
                 <Text style={[styles.imageUploadText, errors.frontIdImage && styles.errorText]}>
-                  {errors.frontIdImage || "Browse (Front Valid ID Image)"}
+                  {isUploadingFront ? "Uploading..." : (errors.frontIdImage || "Browse (Front Valid ID Image)")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -322,12 +342,16 @@ export default function Register4() {
             <TouchableOpacity 
               style={[styles.imageUploadButton, errors.backIdImage && styles.inputError]} 
               onPress={() => handleImageUpload('back')}
-              disabled={isUploading}
+              disabled={isUploadingBack}
             >
               <View style={styles.imageUploadContent}>
-                <Ionicons name="image-outline" size={24} color={errors.backIdImage ? "#FF3B30" : "#0b6623"} />
+                {isUploadingBack ? (
+                  <ActivityIndicator size="small" color={errors.backIdImage ? "#FF3B30" : "#0b6623"} />
+                ) : (
+                  <Ionicons name="image-outline" size={24} color={errors.backIdImage ? "#FF3B30" : "#0b6623"} />
+                )}
                 <Text style={[styles.imageUploadText, errors.backIdImage && styles.errorText]}>
-                  {errors.backIdImage || "Browse (Back Valid ID Image)"}
+                  {isUploadingBack ? "Uploading..." : (errors.backIdImage || "Browse (Back Valid ID Image)")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -347,9 +371,9 @@ export default function Register4() {
       </View>
 
       <TouchableOpacity 
-        style={[styles.registerButton, (isRegistering || isUploading) && styles.registerButtonDisabled]} 
+        style={[styles.registerButton, isRegistering && styles.registerButtonDisabled]} 
         onPress={handleContinue}
-        disabled={isRegistering || isUploading}
+        disabled={isRegistering}
       >
         {isRegistering ? (
           <View style={styles.loadingContainer}>

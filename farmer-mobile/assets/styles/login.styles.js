@@ -57,12 +57,19 @@ export default StyleSheet.create({
         paddingHorizontal: 18,
         marginBottom: 12,
     },
+    inputWrapperError: {
+        borderColor: '#FF3B30',
+    },
+    inputError: {
+        borderColor: '#FF3B30',
+    },
     input: {
         flex: 1,
         fontSize: 16,
         color: '#000000',
-        paddingVertical: 8,
+        paddingVertical: 12,
         marginLeft: 12,
+        textAlignVertical: 'center',
     },
     forgotPassword: {
         alignSelf: 'flex-end',
@@ -114,5 +121,29 @@ export default StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         marginLeft: 4,
+    },
+    errorContainer: {
+        backgroundColor: '#FFE6E6',
+        borderColor: '#FF3B30',
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 15,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    errorText: {
+        color: '#FF3B30',
+        fontSize: 14,
+        textAlign: 'center',
+        fontWeight: '500',
+        flex: 1,
+        paddingRight: 8,
+    },
+    closeButton: {
+        padding: 4,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 59, 48, 0.1)',
     }
 });

@@ -1,11 +1,12 @@
 import express from 'express';
-import { getAllDeliveryDrivers, getDeliveryDriver, registerDeliveryDriver, loginDeliveryDriver, updateDeliveryDriver, deleteDeliveryDriver } from '../controllers/deliverydriversController.js';
+import { getAllDeliveryDrivers, getDeliveryDriver, registerDeliveryDriver, loginDeliveryDriver, updateDeliveryDriver, deleteDeliveryDriver, checkUsernameAvailability } from '../controllers/deliverydriversController.js';
 import { protectDeliveryDriverRoute } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
 // Public routes (no authentication required)
 router.get("/", getAllDeliveryDrivers);
+router.get("/check-username", checkUsernameAvailability);
 router.get("/:id", getDeliveryDriver);
 router.post("/register", registerDeliveryDriver);
 router.post("/login", loginDeliveryDriver);

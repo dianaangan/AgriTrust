@@ -215,6 +215,17 @@ export default StyleSheet.create({
     fontSize: 16, 
   },
 
+  continueButtonDisabled: {
+    backgroundColor: colors.muted,
+    opacity: 0.7,
+  },
+
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
   // Location input styles
   loadingIndicator: {
     position: 'absolute',

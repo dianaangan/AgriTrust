@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, SafeAreaView, Alert, StatusBar } from "react-native";
+import { View, Text, TouchableOpacity, SafeAreaView, StatusBar } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import styles from "../assets/styles/home.styles";
@@ -100,29 +100,13 @@ export default function Home() {
     };
 
     const handleSignOut = () => {
-        Alert.alert(
-            'Sign Out',
-            'Are you sure you want to sign out?',
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-                {
-                    text: 'Sign Out',
-                    style: 'destructive',
-                    onPress: () => {
-                        // Clear user data and navigate to landing
-                        setUserData({
-                            firstName: "Farmer",
-                            lastName: "",
-                            isOnline: false
-                        });
-                        router.replace('/landing');
-                    },
-                },
-            ]
-        );
+        // Clear user data and navigate to landing immediately
+        setUserData({
+            firstName: "Farmer",
+            lastName: "",
+            isOnline: false
+        });
+        router.replace('/landing');
     };
 
     const menuCards = [

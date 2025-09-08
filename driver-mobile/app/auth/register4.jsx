@@ -3,39 +3,26 @@ import {
   Text, 
   TouchableOpacity, 
   ScrollView,
-  ActivityIndicator,
+  Alert,
   Image,
-  TextInput,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import styles from "../../assets/styles/register3.styles";
+import styles from "../../assets/styles/register4.styles";
 import { API_BASE_URL } from "../../constants/config";
-import {StripeProvider} from '@stripe/stripe-react-native';
+import SuccessToast from "../../components/SuccessToast";
 
-export default function Register3() {
+export default function Register4() {
   const router = useRouter();
   const params = useLocalSearchParams();
   
-  // Get user data from register2
+  // Get user data from register3 - this should contain all data from register1, register2, and register3
   const userData = params.userData ? JSON.parse(params.userData) : {};
-  
-  const [form, setForm] = useState({
-    frontIdImage: userData.frontIdImage || null,
-    frontIdImageName: userData.frontIdImageName || "",
-    backIdImage: userData.backIdImage || null,
-    backIdImageName: userData.backIdImageName || ""
-  });
 
-  const [errors, setErrors] = useState({});
-  const [isUploading, setIsUploading] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
   const [cardNumber, setCardNumber] = useState(() => {
     const savedCardNumber = userData.cardNumber || "";
     // Format the saved card number with spaces every 4 digits
@@ -48,6 +35,12 @@ export default function Register3() {
   const [expiry, setExpiry] = useState(userData.expiry || "");
   const [cvc, setCvc] = useState(userData.cvc || "");
   const [cardEmail, setCardEmail] = useState(userData.cardEmail || "");
+
+  const [errors, setErrors] = useState({});
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleCardChange = (value) => {
     const digitsOnly = value.replace(/\D/g, '').slice(0, 16);
@@ -81,8 +74,6 @@ export default function Register3() {
     setters[key](value);
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
   };
-  
-
 
   const validateForm = () => {
     const newErrors = {};
@@ -102,63 +93,6 @@ export default function Register3() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageUpload = async (imageType) => {
-    try {
-      setIsUploading(true);
-      
-      // Request permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        // Set card number error for permission issues (since this is the main field)
-        setErrors(prev => ({ ...prev, cardNumber: 'Valid card number' }));
-        return;
-      }
-
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        const fieldName = imageType === 'front' ? 'frontIdImage' : 'backIdImage';
-        const fileNameField = imageType === 'front' ? 'frontIdImageName' : 'backIdImageName';
-        
-        setForm(prev => ({
-          ...prev,
-          [fieldName]: asset.uri,
-          [fileNameField]: asset.fileName || `${imageType === 'front' ? 'Front' : 'Back'} ID Image`
-        }));
-        
-        // Clear any existing error
-        if (errors[fieldName]) {
-          setErrors(prev => ({ ...prev, [fieldName]: null }));
-        }
-      }
-    } catch (error) {
-      setErrors(prev => ({ ...prev, cardNumber: 'Valid card number' }));
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleRemoveImage = (imageType) => {
-    const fieldName = imageType === 'front' ? 'frontIdImage' : 'backIdImage';
-    const fileNameField = imageType === 'front' ? 'frontIdImageName' : 'backIdImageName';
-    
-    setForm(prev => ({
-      ...prev,
-      [fieldName]: null,
-      [fileNameField]: ""
-    }));
-    
-    // Clear any existing error when removing image
-    if (errors[fieldName]) {
-      setErrors(prev => ({ ...prev, [fieldName]: null }));
-    }
-  };
-
   // Function to verify billing information with Stripe
   const verifyBillingInfo = async () => {
     try {
@@ -174,9 +108,8 @@ export default function Register3() {
         expiryYear: fullYear,
         cvc: cvc,
         email: cardEmail,
-        name: userData.fullName || userData.fullname || 'Cardholder'
+        name: userData.firstName || userData.firstname || 'Cardholder'
       };
-
 
       const response = await fetch(`${API_BASE_URL}/stripe/verify-billing`, {
         method: 'POST',
@@ -185,7 +118,6 @@ export default function Register3() {
         },
         body: JSON.stringify(billingData),
       });
-
 
       // Check if response is JSON
       const contentType = response.headers.get('content-type');
@@ -217,7 +149,6 @@ export default function Register3() {
         return { success: false, error: result.message };
       }
     } catch (error) {
-      
       // Set card number error for network/server issues
       setErrors(prev => ({
         ...prev,
@@ -235,61 +166,180 @@ export default function Register3() {
     setIsNavigating(true);
     // Use replace to prevent navigation stack issues but preserve previous data
     router.replace({
-      pathname: "/auth/register2",
+      pathname: "/auth/register3",
       params: { userData: JSON.stringify({ ...userData }) }
     });
     
     // Reset navigation state after a short delay
     setTimeout(() => setIsNavigating(false), 1000);
   };
-  
-  const handleRegister = async () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
-    
-    if (validateForm()) {
-      setIsNavigating(true);
+
+  // Helper function to convert image URI to base64
+  const convertImageToBase64 = async (imageUri) => {
+    try {
+      if (!imageUri) return null;
       
-      try {
-        // First verify billing information with Stripe
-        const verificationResult = await verifyBillingInfo();
-        
-        if (verificationResult.success) {
-          const cardData = {
-            cardNumber: cardNumber.replace(/\s/g, ''),
-            expiry, cvc, cardEmail,
-            farmname: userData.farmName || userData.farmname,
-            farmlocation: userData.farmLocation || userData.farmlocation,
-            pickuplocation: userData.pickupLocation || userData.pickuplocation,
-            inquiryemail: userData.customerEmail || userData.inquiryemail,
-            profileimage: userData.profileImage || userData.profileimage,
-            businessdescription: userData.businessDescription || userData.businessdescription,
-            // Add Stripe verification data
-            stripePaymentMethodId: verificationResult.data.paymentMethodId,
-            stripePaymentIntentId: verificationResult.data.paymentIntentId,
-            billingVerified: true
-          };
-          
-          // Use replace to prevent multiple register4 screens
-          router.replace({
-            pathname: '/auth/register4',
-            params: { userData: JSON.stringify({ ...userData, ...cardData }) }
-          });
-        } else {
-          // Error is already set in the verifyBillingInfo function
-          // No need for Alert.alert - error is already displayed inline
-        }
-      } finally {
-        // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 1000);
+      // If it's already a data URI, return as is
+      if (imageUri.startsWith('data:image/')) {
+        return imageUri;
       }
+      
+      // If it's a file URI, we need to read it and convert to base64
+      if (imageUri.startsWith('file://') || imageUri.startsWith('content://')) {
+        try {
+          // For React Native, we can use fetch with the file URI
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result;
+              resolve(result);
+            };
+            reader.onerror = (error) => {
+              reject(error);
+            };
+            reader.readAsDataURL(blob);
+          });
+        } catch (fetchError) {
+          // Fallback: return the original URI and let backend handle it
+          return imageUri;
+        }
+      }
+      
+      // If it's already a URL, return as is
+      return imageUri;
+    } catch (error) {
+      // Fallback: return the original URI
+      return imageUri;
+    }
+  };
+
+  // Function to clear all forms and reset navigation stack
+  const clearAllForms = () => {
+    try {
+      // Clear any errors
+      setErrors({});
+      
+      // Clear any loading states
+      setIsRegistering(false);
+      setIsVerifying(false);
+    } catch (error) {
+    }
+  };
+
+  const handleSuccessToastClose = () => {
+    setShowSuccessToast(false);
+    clearAllForms();
+    // Use replace to prevent multiple landing screens
+    router.replace('/landing');
+  };
+
+  const handleRegister = async () => {
+    if (isNavigating || isRegistering) return; // Prevent multiple rapid clicks
+    
+    if (!validateForm()) return;
+    
+    setIsRegistering(true);
+    setIsNavigating(true);
+    
+    try {
+      // First verify billing information with Stripe
+      const verificationResult = await verifyBillingInfo();
+      
+      if (verificationResult.success) {
+        // Convert images to base64 format
+        const profileImageBase64 = await convertImageToBase64(userData.profileImage);
+        const licenseFrontImageBase64 = await convertImageToBase64(userData.licenseFrontImage);
+        const licenseBackImageBase64 = await convertImageToBase64(userData.licenseBackImage);
+        const vehicleRegistrationImageBase64 = await convertImageToBase64(userData.vehicleRegistrationImage);
+        const vehicleFrontImageBase64 = await convertImageToBase64(userData.vehicleFrontImage);
+        const vehicleBackImageBase64 = await convertImageToBase64(userData.vehicleBackImage);
+        const vehicleLeftImageBase64 = await convertImageToBase64(userData.vehicleLeftImage);
+        const vehicleRightImageBase64 = await convertImageToBase64(userData.vehicleRightImage);
+        const licensePlateImageBase64 = await convertImageToBase64(userData.licensePlateImage);
+        const insuranceImageBase64 = await convertImageToBase64(userData.insuranceImage);
+        
+        // Combine all data from register1, register2, register3, and register4
+        const registrationData = {
+          // From register1 (basic user info)
+          firstname: userData.firstName || userData.firstname,
+          lastname: userData.lastName || userData.lastname,
+          email: userData.email,
+          phonenumber: userData.phone || userData.phonenumber,
+          username: userData.username,
+          password: userData.password,
+          
+          // From register2 (profile and license images)
+          profileimage: profileImageBase64,
+          licensefrontimage: licenseFrontImageBase64,
+          licensebackimage: licenseBackImageBase64,
+          
+          // From register3 (vehicle information)
+          vehiclebrand: userData.vehicleBrand,
+          vehiclemodel: userData.vehicleModel,
+          vehicleyearmanufacture: userData.vehicleYear,
+          vehicletype: userData.vehicleType,
+          vehicleplatenumber: userData.vehiclePlateNumber,
+          vehiclecolor: userData.vehicleColor,
+          vehicleregistrationimage: vehicleRegistrationImageBase64,
+          vehiclefrontimage: vehicleFrontImageBase64,
+          vehiclebackimage: vehicleBackImageBase64,
+          vehicleleftimage: vehicleLeftImageBase64,
+          vehiclerightimage: vehicleRightImageBase64,
+          licenseplateimage: licensePlateImageBase64,
+          insuranceimage: insuranceImageBase64,
+          phonecompatibility: true, // Default to true for drivers
+          
+          // From register4 (payment details)
+          cardNumber: cardNumber.replace(/\s/g, ''),
+          cardExpiry: expiry,
+          cardCVC: cvc,
+          cardEmail: cardEmail,
+          
+          // Add Stripe verification data
+          stripePaymentMethodId: verificationResult.data.paymentMethodId,
+          stripePaymentIntentId: verificationResult.data.paymentIntentId,
+          billingVerified: true
+        };
+
+        const registerResponse = await fetch(`${API_BASE_URL}/deliverydrivers/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(registrationData)
+        });
+
+        const result = await registerResponse.json();
+        
+        if (!result.success) {
+          throw new Error(result.message || 'Registration failed');
+        }
+        
+        setShowSuccessToast(true);
+      } else {
+        // Error is already set in the verifyBillingInfo function
+        // No need for Alert.alert - error is already displayed inline
+      }
+    } catch (error) {
+      Alert.alert(
+        'Registration Failed', 
+        error.message || 'An error occurred during registration. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsRegistering(false);
+      // Reset navigation state after a short delay
+      setTimeout(() => setIsNavigating(false), 1000);
     }
   };
 
   return (
+    <>
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <ScrollView 
         style={styles.scrollView} 
@@ -297,12 +347,10 @@ export default function Register3() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Navigation Bar */}
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
               <View style={styles.progressFill} />
@@ -310,10 +358,9 @@ export default function Register3() {
           </View>
         </View>
 
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Provide your card to continue the transaction</Text>
-        <Text style={styles.subtitle}>Input your stripes card details to proceed with the transaction.</Text>
+        <Text style={styles.title}>Payment Information</Text>
+        <Text style={styles.subtitle}>Provide your card details to complete the registration process.</Text>
       </View>
 
       {/* Card information */}
@@ -370,26 +417,41 @@ export default function Register3() {
         </View>
       </View>
 
+      <TouchableOpacity 
+        style={[styles.registerButton, (isVerifying || isRegistering) && styles.registerButtonDisabled]} 
+        onPress={handleRegister}
+        disabled={isVerifying || isRegistering}
+      >
+        {isVerifying || isRegistering ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="white" />
+            <Text style={styles.registerButtonText}>
+              {isVerifying ? "Verifying..." : "Registering..."}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.registerButtonText}>Complete Registration</Text>
+        )}
+      </TouchableOpacity>
 
-
-      {/* Removed ID upload section to match final design */}
-
-        {/* Continue Button */}
-        <TouchableOpacity 
-          style={[styles.continueButton, (isVerifying || isUploading) && styles.continueButtonDisabled]} 
-          onPress={handleRegister}
-          disabled={isVerifying || isUploading}
-        >
-          {isVerifying ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="white" />
-              <Text style={styles.continueButtonText}>Verifying...</Text>
-            </View>
-          ) : (
-            <Text style={styles.continueButtonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.termsContainer}>
+          <Text style={styles.termsText}>
+            By creating this account, you agree to the{' '}
+            <Text style={styles.termsLink}>Terms of Service</Text>
+            {' '}and{' '}
+            <Text style={styles.termsLink}>Privacy Policy</Text>
+          </Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
+
+    {/* Success Toast */}
+    <SuccessToast
+      visible={showSuccessToast}
+      onClose={handleSuccessToastClose}
+      title="Registration Confirmed"
+      message="Your account verification is in progress and may take up to 24 hours. You'll be notified by email once it's complete."
+    />
+    </>
   );
 }

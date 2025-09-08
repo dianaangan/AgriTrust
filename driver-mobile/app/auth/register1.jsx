@@ -42,7 +42,7 @@ export default function Register1() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/farmers/check-username?username=${encodeURIComponent(username)}`);
+      const response = await fetch(`${API_BASE_URL}/deliverydrivers/check-username?username=${encodeURIComponent(username)}`);
       const result = await response.json();
       
       if (result.success && result.available) {
@@ -223,8 +223,7 @@ export default function Register1() {
               onChangeText={(t) => handleChange("confirmPassword", t)}
               onFocus={() => handleFocus("confirmPassword")}
               style={[styles.input, errors.confirmPassword && styles.inputError]}
-              returnKeyType="done"
-              onSubmitEditing={Keyboard.dismiss}
+              returnKeyType="next"
             />
 
             <TextInput
@@ -256,7 +255,8 @@ export default function Register1() {
               onChangeText={(t) => handleChange("phone", t)}
               onFocus={() => handleFocus("phone")}
               style={[styles.input, errors.phone && styles.inputError]}
-              returnKeyType="next"
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
             
           </View>

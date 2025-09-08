@@ -1,244 +1,78 @@
+import Farmer from '../models/Farmer.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import cloudinary from '../config/cloudinary.js';
-import Farmer from '../models/Farmer.js';
 
-export async function getAllFarmers (req, res) {
+// Check if username is available
+export async function checkUsernameAvailability(req, res) {
   try {
-    const farmers = await Farmer.find({}).select('-password -cardNumber -cardCVC');
-    
-    if (!farmers || farmers.length === 0) {
-      return res.status(404).json({ message: "No farmers found" });
-    }
-    
-    res.status(200).json({
-      message: "Farmers retrieved successfully",
-      count: farmers.length,
-      farmers: farmers
-    });
-  } catch (error) {
-    console.error('Error fetching farmers:', error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
+    const { username } = req.query;
 
-export async function getFarmer(req, res) {
-  try {
-    const { id } = req.params;
-    
-    const farmer = await Farmer.findById(id).select('-password -cardNumber -cardCVC');
-    
-    if (!farmer) {
-      return res.status(404).json({ error: "Farmer not found" });
-    }
-    
-    res.status(200).json({
-      message: "Farmer retrieved successfully",
-      farmer: farmer
-    });
-    
-  } catch (error) {
-    console.error('Error fetching farmer:', error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-export async function registerFarmer(req, res) {
-  try {
-
-
-    const { 
-      firstname, lastname, email, phonenumber, username, password, 
-      farmname, farmlocation, pickuplocation, inquiryemail, profileimage, 
-      cardNumber, cardExpiry, cardCVC, cardEmail,
-      frontIdImage, backIdImage 
-    } = req.body;
-    
-    // Validate required fields
-    if (!firstname || !lastname || !email || !phonenumber || !username || !password || !farmname || !farmlocation || !pickuplocation || !inquiryemail || !profileimage) {
-
-      return res.status(400).json({ 
+    if (!username) {
+      return res.status(400).json({
         success: false,
-        message: "All basic fields are required" 
+        message: 'Username is required'
       });
     }
 
+    // Check if username exists
+    const existingFarmer = await Farmer.findOne({ username });
+    
+    if (existingFarmer) {
+      return res.json({
+        success: false,
+        available: false,
+        message: 'Username is already taken'
+      });
+    }
 
-
-    // Check if farmer already exists
-    const existingFarmer = await Farmer.findOne({ 
-      $or: [{ email }, { username }] 
+    return res.json({
+      success: true,
+      available: true,
+      message: 'Username is available'
     });
+  } catch (error) {
+    console.error('Username check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Register farmer
+export async function registerFarmer(req, res) {
+  try {
+    const {
+      firstname, lastname, email, phonenumber, username, password,
+      farmname, farmlocation, pickuplocation, inquiryemail, profileimage,
+      businessdescription, cardNumber, cardExpiry, cardCVC, cardEmail,
+      frontIdImage, backIdImage
+    } = req.body;
+
+    // Validate required fields
+    if (!firstname || !lastname || !email || !phonenumber || !username || !password ||
+        !farmname || !farmlocation || !pickuplocation || !inquiryemail || !profileimage ||
+        !businessdescription) {
+      return res.status(400).json({
+        success: false,
+        message: 'All required fields must be provided'
+      });
+    }
+
+    // Check if username already exists
+    const existingFarmer = await Farmer.findOne({ username });
     
     if (existingFarmer) {
       return res.status(400).json({
         success: false,
-        message: 'Farmer with this email or username already exists'
+        message: 'Username is already taken'
       });
     }
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Upload profile image to Cloudinary
-    let imageUrl;
-    try {
-
-      
-      // Check if Cloudinary is configured
-      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-
-        return res.status(500).json({
-          success: false,
-          message: 'Image upload service not configured. Please contact administrator.'
-        });
-      }
-      
-      // Handle different image formats
-      if (profileimage.startsWith('data:image/')) {
-        // It's a base64 data URI - upload directly to Cloudinary
-
-        const uploadResponse = await cloudinary.uploader.upload(profileimage, {
-          resource_type: 'auto',
-          folder: 'agritrust/profile-images',
-          public_id: `profile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        });
-        imageUrl = uploadResponse.secure_url;
-
-      }
-      // If it's already a URL, use it directly
-      else if (profileimage.startsWith('http')) {
-        imageUrl = profileimage;
-
-      }
-      // If it's a file URI, try to upload it directly to Cloudinary
-      else if (profileimage.startsWith('file://') || profileimage.startsWith('content://')) {
-
-        try {
-          const uploadResponse = await cloudinary.uploader.upload(profileimage, {
-            resource_type: 'auto',
-            folder: 'agritrust/profile-images',
-            public_id: `profile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          });
-          imageUrl = uploadResponse.secure_url;
-        } catch (fileUploadError) {
-          imageUrl = 'https://via.placeholder.com/300x300?text=Profile+Image';
-        }
-      }
-      // If it's other format, use placeholder
-      else {
-        imageUrl = 'https://via.placeholder.com/300x300?text=Profile+Image';
-      }
-    } catch (uploadError) {
-      
-      // Check if it's a Cloudinary configuration error
-      if (uploadError.message.includes('Invalid cloud_name') || uploadError.message.includes('401')) {
-        return res.status(500).json({
-          success: false,
-          message: 'Image upload service configuration error. Please check Cloudinary setup.'
-        });
-      }
-      
-      return res.status(400).json({
-        success: false,
-        message: 'Failed to upload profile image: ' + uploadError.message
-      });
-    }
-
-    // Upload ID images to Cloudinary
-    let frontIdImageUrl = null;
-    let backIdImageUrl = null;
-    
-    if (frontIdImage) {
-      try {
-
-        
-        // Handle different image formats for front ID
-        if (frontIdImage.startsWith('data:image/')) {
-          // It's a base64 data URI - upload directly to Cloudinary
-          const frontUploadResponse = await cloudinary.uploader.upload(frontIdImage, {
-            resource_type: 'auto',
-            folder: 'agritrust/id-images',
-            public_id: `front_id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          });
-          frontIdImageUrl = frontUploadResponse.secure_url;
-
-        } else if (frontIdImage.startsWith('http')) {
-          frontIdImageUrl = frontIdImage;
-
-        } else if (frontIdImage.startsWith('file://') || frontIdImage.startsWith('content://')) {
-
-          try {
-            const frontUploadResponse = await cloudinary.uploader.upload(frontIdImage, {
-              resource_type: 'auto',
-              folder: 'agritrust/id-images',
-              public_id: `front_id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-            });
-            frontIdImageUrl = frontUploadResponse.secure_url;
-
-          } catch (fileUploadError) {
-
-            frontIdImageUrl = 'https://via.placeholder.com/300x300?text=Front+ID';
-          }
-        } else {
-
-          frontIdImageUrl = 'https://via.placeholder.com/300x300?text=Front+ID';
-        }
-      } catch (uploadError) {
-        console.error('Front ID image upload error:', uploadError);
-        return res.status(400).json({
-          success: false,
-          message: 'Failed to upload front ID image: ' + uploadError.message
-        });
-      }
-    }
-    
-    if (backIdImage) {
-      try {
-
-        
-        // Handle different image formats for back ID
-        if (backIdImage.startsWith('data:image/')) {
-          // It's a base64 data URI - upload directly to Cloudinary
-          const backUploadResponse = await cloudinary.uploader.upload(backIdImage, {
-            resource_type: 'auto',
-            folder: 'agritrust/id-images',
-            public_id: `back_id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          });
-          backIdImageUrl = backUploadResponse.secure_url;
-
-        } else if (backIdImage.startsWith('http')) {
-          backIdImageUrl = backIdImage;
-
-        } else if (backIdImage.startsWith('file://') || backIdImage.startsWith('content://')) {
-
-          try {
-            const backUploadResponse = await cloudinary.uploader.upload(backIdImage, {
-              resource_type: 'auto',
-              folder: 'agritrust/id-images',
-              public_id: `back_id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-            });
-            backIdImageUrl = backUploadResponse.secure_url;
-
-          } catch (fileUploadError) {
-
-            backIdImageUrl = 'https://via.placeholder.com/300x300?text=Back+ID';
-          }
-        } else {
-
-          backIdImageUrl = 'https://via.placeholder.com/300x300?text=Back+ID';
-        }
-      } catch (uploadError) {
-        console.error('Back ID image upload error:', uploadError);
-        return res.status(400).json({
-          success: false,
-          message: 'Failed to upload back ID image: ' + uploadError.message
-        });
-      }
-    }
-
-
 
     // Create new farmer
     const farmer = new Farmer({
@@ -252,27 +86,17 @@ export async function registerFarmer(req, res) {
       farmlocation,
       pickuplocation,
       inquiryemail,
-      profileimage: imageUrl,
+      profileimage,
+      businessdescription,
       cardNumber,
       cardExpiry,
       cardCVC,
       cardEmail,
-      frontIdImage: frontIdImageUrl,
-      backIdImage: backIdImageUrl,
+      frontIdImage,
+      backIdImage
     });
 
-    // Save farmer to database
-    try {
     await farmer.save();
-
-    } catch (saveError) {
-
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to save farmer data',
-        error: saveError.message
-      });
-    }
 
     // Generate token
     const token = jwt.sign(
@@ -280,8 +104,6 @@ export async function registerFarmer(req, res) {
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
-
-
 
     res.status(201).json({
       success: true,
@@ -292,7 +114,8 @@ export async function registerFarmer(req, res) {
           email: farmer.email,
           username: farmer.username,
           firstname: farmer.firstname,
-          lastname: farmer.lastname
+          lastname: farmer.lastname,
+          verified: farmer.verified
         },
         token
       }
@@ -307,6 +130,7 @@ export async function registerFarmer(req, res) {
   }
 }
 
+// Login farmer
 export async function loginFarmer(req, res) {
   try {
     const { username, password } = req.body;
@@ -369,143 +193,179 @@ export async function loginFarmer(req, res) {
   }
 }
 
+// Get all farmers
+export async function getAllFarmers(req, res) {
+  try {
+    const farmers = await Farmer.find().select('-password');
+    
+    res.json({
+      success: true,
+      data: { farmers }
+    });
+  } catch (error) {
+    console.error('Get all farmers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
 
+// Get farmer by ID
+export async function getFarmer(req, res) {
+  try {
+    const { id } = req.params;
+    const farmer = await Farmer.findById(id).select('-password');
+    
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Farmer not found'
+      });
+    }
 
+    res.json({
+      success: true,
+      data: { farmer }
+    });
+  } catch (error) {
+    console.error('Get farmer error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Update farmer
 export async function updateFarmer(req, res) {
   try {
     const { id } = req.params;
     const updateData = req.body;
     
-    // Check if farmer exists
-    const existingFarmer = await Farmer.findById(id);
-    if (!existingFarmer) {
-      return res.status(404).json({ error: "Farmer not found" });
-    }
+    // Remove password from update data if present
+    delete updateData.password;
     
-    // If password is being updated, hash it
-    if (updateData.password) {
-      const saltRounds = 10;
-      updateData.password = await bcrypt.hash(updateData.password, saltRounds);
-    }
-    
-    // If profile image is being updated, upload to Cloudinary
-    if (updateData.profileimage && updateData.profileimage !== existingFarmer.profileimage) {
-      const uploadResponse = await cloudinary.uploader.upload(updateData.profileimage);
-      updateData.profileimage = uploadResponse.secure_url;
-    }
-    
-    // Note: Card fields (cardNumber, cardExpiry, cardCVC, cardEmail) are handled automatically
-    // In production, consider encrypting sensitive card data before storing
-    
-    // Update the farmer
-    const updatedFarmer = await Farmer.findByIdAndUpdate(
-      id,
-      updateData,
+    const farmer = await Farmer.findByIdAndUpdate(
+      id, 
+      updateData, 
       { new: true, runValidators: true }
-    ).select('-password -cardNumber -cardCVC'); // Exclude sensitive card data from response
+    ).select('-password');
     
-    res.status(200).json({
-      message: "Farmer updated successfully",
-      farmer: updatedFarmer
-    });
-    
-  } catch (error) {
-    console.error('Error updating farmer:', error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-export async function verifyFarmer(req, res) {
-  try {
-    const { id } = req.params;
-    
-    // Check if farmer exists
-    const existingFarmer = await Farmer.findById(id);
-    if (!existingFarmer) {
-      return res.status(404).json({ 
+    if (!farmer) {
+      return res.status(404).json({
         success: false,
-        message: "Farmer not found" 
+        message: 'Farmer not found'
       });
     }
-    
-    // Update verification status
-    const updatedFarmer = await Farmer.findByIdAndUpdate(
-      id,
-      { verified: true },
-      { new: true }
-    ).select('-password -cardNumber -cardCVC');
-    
-    res.status(200).json({ 
+
+    res.json({
       success: true,
-      message: "Farmer verified successfully",
-      farmer: updatedFarmer
+      message: 'Farmer updated successfully',
+      data: { farmer }
     });
-    
   } catch (error) {
-    console.error('Error verifying farmer:', error);
-    res.status(500).json({ 
+    console.error('Update farmer error:', error);
+    res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
       error: error.message
     });
   }
 }
 
-export async function unverifyFarmer(req, res) {
-  try {
-    const { id } = req.params;
-    
-    // Check if farmer exists
-    const existingFarmer = await Farmer.findById(id);
-    if (!existingFarmer) {
-      return res.status(404).json({ 
-        success: false,
-        message: "Farmer not found" 
-      });
-    }
-    
-    // Update verification status
-    const updatedFarmer = await Farmer.findByIdAndUpdate(
-      id,
-      { verified: false },
-      { new: true }
-    ).select('-password -cardNumber -cardCVC');
-    
-    res.status(200).json({ 
-      success: true,
-      message: "Farmer verification revoked successfully",
-      farmer: updatedFarmer
-    });
-    
-  } catch (error) {
-    console.error('Error unverifying farmer:', error);
-    res.status(500).json({ 
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
-  }
-}
-
+// Delete farmer
 export async function deleteFarmer(req, res) {
   try {
     const { id } = req.params;
     
-    // Check if farmer exists
-    const existingFarmer = await Farmer.findById(id);
-    if (!existingFarmer) {
-      return res.status(404).json({ error: "Farmer not found" });
+    const farmer = await Farmer.findByIdAndDelete(id);
+    
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Farmer not found'
+      });
     }
-    
-    // Delete the farmer from database
-    await Farmer.findByIdAndDelete(id);
-    
-    res.status(200).json({ 
-      message: `Farmer account with ID ${id} deleted successfully` 
+
+    res.json({
+      success: true,
+      message: 'Farmer deleted successfully'
     });
-    
   } catch (error) {
-    console.error('Error deleting farmer:', error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error('Delete farmer error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Verify farmer
+export async function verifyFarmer(req, res) {
+  try {
+    const { id } = req.params;
+    
+    const farmer = await Farmer.findByIdAndUpdate(
+      id, 
+      { verified: true }, 
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Farmer not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Farmer verified successfully',
+      data: { farmer }
+    });
+  } catch (error) {
+    console.error('Verify farmer error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Unverify farmer
+export async function unverifyFarmer(req, res) {
+  try {
+    const { id } = req.params;
+    
+    const farmer = await Farmer.findByIdAndUpdate(
+      id, 
+      { verified: false }, 
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Farmer not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Farmer unverified successfully',
+      data: { farmer }
+    });
+  } catch (error) {
+    console.error('Unverify farmer error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
   }
 }

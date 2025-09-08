@@ -3,6 +3,34 @@ import jwt from 'jsonwebtoken';
 import cloudinary from '../config/cloudinary.js';
 import DeliveryDriver from '../models/DeliveryDriver.js';
 
+export async function checkUsernameAvailability(req, res) {
+  try {
+    const { username } = req.query;
+
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username is required'
+      });
+    }
+
+    const existingDriver = await DeliveryDriver.findOne({ username });
+    
+    res.json({
+      success: true,
+      available: !existingDriver,
+      message: existingDriver ? 'Username is already taken' : 'Username is available'
+    });
+  } catch (error) {
+    console.error('Username availability check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
 export async function getAllDeliveryDrivers(req, res) {
   try {
     const deliveryDrivers = await DeliveryDriver.find({}).select('-password -cardNumber -cardCVC');
@@ -191,6 +219,14 @@ export async function loginDeliveryDriver(req, res) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
+      });
+    }
+
+    // Check if driver is verified
+    if (!deliveryDriver.verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account not verified. Please wait for admin verification before logging in.'
       });
     }
 
