@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "AgriTrust Farmer",
-    "slug": "agriTrust-farmer",
+    "slug": "agritrust-farmer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

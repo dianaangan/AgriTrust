@@ -3,13 +3,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Initialize Stripe with your secret key
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-08-27.basil', // Use the latest API version
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+
+if (!stripeSecretKey) {
+  throw new Error('Missing STRIPE_SECRET_KEY in environment. Set it in your .env file.');
+}
+
+// Initialize Stripe with your secret key. Omit apiVersion to use account default.
+export const stripe = new Stripe(stripeSecretKey);
 
 // Stripe configuration
 export const STRIPE_CONFIG = {
-  publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-  secretKey: process.env.STRIPE_SECRET_KEY
+  publishableKey: stripePublishableKey,
+  secretKey: stripeSecretKey
 };

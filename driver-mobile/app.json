@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "driver-mobile",
-    "slug": "driver-mobile",
+    "name": "AgriTrust Driver",
+    "slug": "agritrust-driver",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

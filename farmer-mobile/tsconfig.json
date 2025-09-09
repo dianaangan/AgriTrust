@@ -12,7 +12,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "app/**/*.jsx"
+    "app/**/*.jsx",
+    "expo-env.d.ts"
   ]
 }

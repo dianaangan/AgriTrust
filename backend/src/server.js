@@ -27,6 +27,17 @@ app.use("/api/buyers", buyersRoutes);
 app.use("/api/deliverydrivers", deliverydriversRoutes);
 app.use("/api/stripe", stripeRoutes);
 
+// Minimal health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Minimal config endpoint for mobile apps (optional)
+app.get("/api/config", (req, res) => {
+  const baseUrl = process.env.PUBLIC_API_BASE_URL || `http://localhost:${PORT}/api`;
+  res.json({ apiBaseUrl: baseUrl });
+});
+
 
 connectDB().then(() => {
   app.listen(PORT, () => {
