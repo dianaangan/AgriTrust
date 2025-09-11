@@ -153,7 +153,12 @@ export default StyleSheet.create({
   imageUploadContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+
+  iconContainer: {
+    marginRight: 24,
   },
 
   imageUploadText: {
@@ -229,7 +234,7 @@ export default StyleSheet.create({
   // Location input styles
   loadingIndicator: {
     position: 'absolute',
-    right: 50,
+    right: 60,
     top: 18,
   },
 

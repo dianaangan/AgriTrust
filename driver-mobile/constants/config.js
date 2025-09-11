@@ -1,5 +1,5 @@
 // Minimal, deployment-friendly API base URL resolver
-const DEFAULT_BASE = 'http://localhost:5001/api';
+const DEFAULT_BASE = 'http://192.168.1.7:5001/api';
 
 const fetchWithTimeout = (url, ms = 1500) => {
   const controller = new AbortController();

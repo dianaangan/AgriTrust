@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,27 @@ import getColors from '../constants/colors';
 const colors = getColors('light');
 const { width } = Dimensions.get('window');
 
-const SuccessToast = ({ visible, onClose, title, message, duration = 5000 }) => {
-  const scaleAnim = new Animated.Value(0);
-  const opacityAnim = new Animated.Value(0);
+const SuccessToast = ({ visible, onClose, title, message, duration = 0 }) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const handleClose = useCallback(() => {
+    // Animate out
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  }, [scaleAnim, opacityAnim, onClose]);
 
   useEffect(() => {
     if (visible) {
@@ -35,36 +53,20 @@ const SuccessToast = ({ visible, onClose, title, message, duration = 5000 }) => 
         }),
       ]).start();
 
-      // Auto close after duration
-      const timer = setTimeout(() => {
-        handleClose();
-      }, duration);
+      // Auto close after duration (only if duration > 0)
+      if (duration > 0) {
+        const timer = setTimeout(() => {
+          handleClose();
+        }, duration);
 
-      return () => clearTimeout(timer);
+        return () => clearTimeout(timer);
+      }
     } else {
       // Reset animations when not visible
       scaleAnim.setValue(0);
       opacityAnim.setValue(0);
     }
-  }, [visible]);
-
-  const handleClose = () => {
-    // Animate out
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
-  };
+  }, [visible, duration, handleClose, scaleAnim, opacityAnim]);
 
   if (!visible) return null;
 
@@ -93,7 +95,7 @@ const SuccessToast = ({ visible, onClose, title, message, duration = 5000 }) => 
           <Text style={styles.message}>{message}</Text>
           
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Text style={styles.closeButtonText}>Continue</Text>
+            <Text style={styles.closeButtonText}>OK</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -123,6 +125,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
+    // Web-friendly shadow
+    boxShadow: '0px 4px 16px rgba(0,0,0,0.25)'
   },
   iconContainer: {
     marginBottom: 16,

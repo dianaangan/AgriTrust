@@ -49,7 +49,7 @@ export default StyleSheet.create({
 
   progressFill: {
     height: '100%',
-    width: '66%', // Two-thirds filled to show progress
+    width: '83%', // Five-sixths filled to show progress
     backgroundColor: colors.primary,
   },
 
@@ -62,7 +62,7 @@ export default StyleSheet.create({
     lineHeight: 38,
     fontWeight: '700',
     color: colors.text,
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: 25,
     fontFamily: 'serif',
     textAlign: 'left',
@@ -72,29 +72,75 @@ export default StyleSheet.create({
     fontSize: 15,
     color: colors.muted,
     lineHeight: 22,
-    marginBottom: 5,
+    marginBottom: 0,
   },
 
-  formSection: {
-    marginBottom: 5,
+  section: {
+    marginBottom: 25,
   },
 
-  // Input Fields
-  input: {
-    height: 48,
+  // Image Upload Styles
+  imageSection: {
+    marginBottom: 15,
+  },
+
+  imageUploadButton: {
+    height: 50,
+    borderWidth: 1.5,
+    borderColor: colors.outline,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+
+  imageUploadContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  imageUploadText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+
+  imagePreviewContainer: {
+    height: 50,
     borderWidth: 1.5,
     borderColor: colors.outline,
     borderRadius: 28,
     paddingHorizontal: 18,
     backgroundColor: 'transparent',
     justifyContent: 'center',
-    marginBottom: 13,
-    fontSize: 14,
-    color: colors.text,
+    alignItems: 'center',
   },
 
-  inputError: {
-    borderColor: '#FF3B30',
+  imageInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+
+  imageFileName: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
+    marginRight: 12,
+  },
+
+  cancelButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFE5E5',
   },
 
   // Continue Button
@@ -105,7 +151,7 @@ export default StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     alignSelf: 'center',
-    marginTop: 60,
+    marginTop: 150,
     marginBottom: 15,
   },
 
@@ -113,5 +159,15 @@ export default StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 18,
+  },
+
+  // Error Styles
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
   },
 });

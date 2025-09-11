@@ -1,6 +1,7 @@
 import Farmer from '../models/Farmer.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import cloudinary from '../config/cloudinary.js';
 
 // Check if username is available
 export async function checkUsernameAvailability(req, res) {
@@ -74,7 +75,31 @@ export async function registerFarmer(req, res) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new farmer
+    // Helper for Cloudinary upload from data URI or URL; reject device-local
+    const uploadImage = async (value, fieldName) => {
+      if (typeof value !== 'string' || !value) {
+        throw new Error(`Missing ${fieldName}`);
+      }
+      const lower = value.toLowerCase();
+      if (lower.startsWith('file:') || lower.startsWith('content:')) {
+        throw new Error(`Invalid ${fieldName}: device-local URI provided`);
+      }
+      const uploaded = await cloudinary.uploader.upload(value);
+      return uploaded?.secure_url || uploaded?.url;
+    };
+
+    // Upload all images to Cloudinary first
+    const [
+      profileUrl,
+      frontIdUrl,
+      backIdUrl
+    ] = await Promise.all([
+      uploadImage(profileimage, 'profileimage'),
+      uploadImage(frontIdImage, 'frontIdImage'),
+      uploadImage(backIdImage, 'backIdImage')
+    ]);
+
+    // Create new farmer with Cloudinary URLs
     const farmer = new Farmer({
       firstname,
       lastname,
@@ -86,14 +111,14 @@ export async function registerFarmer(req, res) {
       farmlocation,
       pickuplocation,
       inquiryemail,
-      profileimage,
+      profileimage: profileUrl,
       businessdescription,
       cardNumber,
       cardExpiry,
       cardCVC,
       cardEmail,
-      frontIdImage,
-      backIdImage
+      frontIdImage: frontIdUrl,
+      backIdImage: backIdUrl
     });
 
     await farmer.save();

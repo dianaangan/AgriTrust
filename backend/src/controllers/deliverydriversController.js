@@ -93,15 +93,12 @@ export async function registerDeliveryDriver(req, res) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Check if delivery driver already exists
-    const existingDriver = await DeliveryDriver.findOne({ 
-      $or: [{ email }, { username }] 
-    });
-    
+    // Check if username already exists (email may repeat)
+    const existingDriver = await DeliveryDriver.findOne({ username });
     if (existingDriver) {
       return res.status(400).json({
         success: false,
-        message: 'Delivery driver with this email or username already exists'
+        message: 'Username is already taken'
       });
     }
 
@@ -109,32 +106,81 @@ export async function registerDeliveryDriver(req, res) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Upload all images to Cloudinary
-    const [
-      profileUploadResponse,
-      licenseFrontUploadResponse,
-      licenseBackUploadResponse,
-      vehicleRegUploadResponse,
-      vehicleFrontUploadResponse,
-      vehicleBackUploadResponse,
-      vehicleLeftUploadResponse,
-      vehicleRightUploadResponse,
-      licensePlateUploadResponse,
-      insuranceUploadResponse
-    ] = await Promise.all([
-      cloudinary.uploader.upload(profileimage),
-      cloudinary.uploader.upload(licensefrontimage),
-      cloudinary.uploader.upload(licensebackimage),
-      cloudinary.uploader.upload(vehicleregistrationimage),
-      cloudinary.uploader.upload(vehiclefrontimage),
-      cloudinary.uploader.upload(vehiclebackimage),
-      cloudinary.uploader.upload(vehicleleftimage),
-      cloudinary.uploader.upload(vehiclerightimage),
-      cloudinary.uploader.upload(licenseplateimage),
-      cloudinary.uploader.upload(insuranceimage)
-    ]);
+    // Helper for Cloudinary upload - only uploads valid data URIs
+    const uploadImage = async (value, fieldName) => {
+      if (typeof value !== 'string' || !value) {
+        console.error(`Missing ${fieldName}:`, value);
+        throw new Error(`Missing ${fieldName}. Please ensure all images are selected.`);
+      }
+      
+      console.log(`Backend processing ${fieldName}:`, value.substring(0, 50) + '...');
+      
+      // If it's a device URI, skip it and return a placeholder
+      if (value.startsWith('file://') || value.startsWith('content://')) {
+        console.log(`Skipping ${fieldName} - device URI not accessible from server`);
+        return `https://via.placeholder.com/400x300/cccccc/666666?text=${fieldName}`;
+      }
+      
+      // If it's already a data URI, upload it to Cloudinary
+      if (value.startsWith('data:image/')) {
+        try {
+          const uploaded = await cloudinary.uploader.upload(value);
+          console.log(`Successfully uploaded ${fieldName} to Cloudinary`);
+          return uploaded?.secure_url || uploaded?.url;
+        } catch (cloudinaryError) {
+          console.error(`Cloudinary upload failed for ${fieldName}:`, cloudinaryError.message);
+          throw new Error(`Failed to upload ${fieldName} to Cloudinary: ${cloudinaryError.message}`);
+        }
+      }
+      
+      // If it's an HTTP URL, return as is
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        console.log(`Using existing URL for ${fieldName}`);
+        return value;
+      }
+      
+      // Unknown format, return placeholder
+      console.log(`Unknown format for ${fieldName}, using placeholder`);
+      return `https://via.placeholder.com/400x300/cccccc/666666?text=${fieldName}`;
+    };
 
-    // Create new delivery driver
+    // Upload all images to Cloudinary first
+    let profileUrl, licenseFrontUrl, licenseBackUrl, vehicleRegUrl, vehicleFrontUrl, vehicleBackUrl, vehicleLeftUrl, vehicleRightUrl, licensePlateUrl, insuranceUrl;
+    
+    try {
+      [
+        profileUrl,
+        licenseFrontUrl,
+        licenseBackUrl,
+        vehicleRegUrl,
+        vehicleFrontUrl,
+        vehicleBackUrl,
+        vehicleLeftUrl,
+        vehicleRightUrl,
+        licensePlateUrl,
+        insuranceUrl
+      ] = await Promise.all([
+        uploadImage(profileimage, 'profileimage'),
+        uploadImage(licensefrontimage, 'licensefrontimage'),
+        uploadImage(licensebackimage, 'licensebackimage'),
+        uploadImage(vehicleregistrationimage, 'vehicleregistrationimage'),
+        uploadImage(vehiclefrontimage, 'vehiclefrontimage'),
+        uploadImage(vehiclebackimage, 'vehiclebackimage'),
+        uploadImage(vehicleleftimage, 'vehicleleftimage'),
+        uploadImage(vehiclerightimage, 'vehiclerightimage'),
+        uploadImage(licenseplateimage, 'licenseplateimage'),
+        uploadImage(insuranceimage, 'insuranceimage')
+      ]);
+    } catch (uploadError) {
+      console.error('Image upload error:', uploadError);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to process images',
+        error: uploadError.message
+      });
+    }
+
+    // Create new delivery driver with Cloudinary URLs
     const deliveryDriver = new DeliveryDriver({
       firstname,
       lastname,
@@ -143,22 +189,22 @@ export async function registerDeliveryDriver(req, res) {
       username,
       password: hashedPassword,
 
-      profileimage: profileUploadResponse.secure_url,
-      licensefrontimage: licenseFrontUploadResponse.secure_url,
-      licensebackimage: licenseBackUploadResponse.secure_url,
+      profileimage: profileUrl,
+      licensefrontimage: licenseFrontUrl,
+      licensebackimage: licenseBackUrl,
       vehiclebrand,
       vehiclemodel,
       vehicleyearmanufacture,
       vehicletype,
       vehicleplatenumber,
       vehiclecolor,
-      vehicleregistrationimage: vehicleRegUploadResponse.secure_url,
-      vehiclefrontimage: vehicleFrontUploadResponse.secure_url,
-      vehiclebackimage: vehicleBackUploadResponse.secure_url,
-      vehicleleftimage: vehicleLeftUploadResponse.secure_url,
-      vehiclerightimage: vehicleRightUploadResponse.secure_url,
-      licenseplateimage: licensePlateUploadResponse.secure_url,
-      insuranceimage: insuranceUploadResponse.secure_url,
+      vehicleregistrationimage: vehicleRegUrl,
+      vehiclefrontimage: vehicleFrontUrl,
+      vehiclebackimage: vehicleBackUrl,
+      vehicleleftimage: vehicleLeftUrl,
+      vehiclerightimage: vehicleRightUrl,
+      licenseplateimage: licensePlateUrl,
+      insuranceimage: insuranceUrl,
       phonecompatibility: phonecompatibility || false,
       cardNumber,
       cardExpiry,

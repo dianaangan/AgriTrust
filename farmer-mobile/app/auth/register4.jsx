@@ -10,32 +10,39 @@ import {
   Platform
 } from "react-native";
 import { useState } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import styles from "../../assets/styles/register4.styles";
 import { API_BASE_URL } from "../../constants/config";
 import SuccessToast from "../../components/SuccessToast";
+import { useFarmerRegistration } from "../../contexts/FarmerRegistrationContext";
 
 export default function Register4() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  
-  // Get user data from register3 - this should contain all data from register1, register2, and register3
-  const userData = params.userData ? JSON.parse(params.userData) : {};
+  const { 
+    frontIdImage,
+    frontIdImageName,
+    backIdImage,
+    backIdImageName,
+    updateImage,
+    setStep,
+    errors,
+    setErrors,
+    clearErrors,
+    validateCurrentStep,
+    validateCompleteRegistration,
+    isProcessing,
+    isRegistering,
+    setRegistering,
+    isUploadingFrontId,
+    isUploadingBackId,
+    setLoadingState,
+    getRegistrationData,
+    resetRegistration
+  } = useFarmerRegistration();
 
-  const [form, setForm] = useState({
-    frontIdImage: userData.frontIdImage || null,
-    frontIdImageName: userData.frontIdImageName || "",
-    backIdImage: userData.backIdImage || null,
-    backIdImageName: userData.backIdImageName || ""
-  });
-
-  const [errors, setErrors] = useState({});
-  const [isUploadingFront, setIsUploadingFront] = useState(false);
-  const [isUploadingBack, setIsUploadingBack] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -45,91 +52,69 @@ export default function Register4() {
     if (isNavigating) return; // Prevent multiple rapid clicks
     
     setIsNavigating(true);
-    // Use replace to prevent navigation stack issues but preserve previous data
-    router.replace({
-      pathname: "/auth/register3",
-      params: { userData: JSON.stringify({ ...userData }) }
-    });
+    setStep(3);
+    router.replace("/auth/register3");
     
     // Reset navigation state after a short delay
     setTimeout(() => setIsNavigating(false), 1000);
   };
 
   const validateForm = () => {
-    const newErrors = {};
-    const validations = {
-      frontIdImage: () => !form.frontIdImage && "Front ID image is required",
-      backIdImage: () => !form.backIdImage && "Back ID image is required"
-    };
-
-    Object.entries(validations).forEach(([key, validate]) => {
-      const error = validate();
-      if (error) newErrors[key] = error;
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return validateCurrentStep();
   };
 
   const handleImageUpload = async (imageType) => {
     try {
-      // Set the appropriate loading state based on image type
-      if (imageType === 'front') {
-        setIsUploadingFront(true);
-      } else {
-        setIsUploadingBack(true);
-      }
+      const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
+      setLoadingState(loadingField, true);
       
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Please grant permission to access your photo library');
+        setLoadingState(loadingField, false);
         return;
       }
 
       // Launch image picker
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // No cropping
-        quality: 0.8,
+        mediaTypes: 'images',
+        allowsEditing: false, // Disable cropping/editing
+        quality: 0.7, // Higher quality since no cropping
+        base64: true, // This will return base64 data directly
       });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         const fieldName = imageType === 'front' ? 'frontIdImage' : 'backIdImage';
-        const fileNameField = imageType === 'front' ? 'frontIdImageName' : 'backIdImageName';
+        const base64DataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
         
-        setForm(prev => ({
-          ...prev,
-          [fieldName]: asset.uri,
-          [fileNameField]: asset.fileName || `${imageType === 'front' ? 'Front' : 'Back'} ID Image`
-        }));
-        
-        // Clear any existing error
-        if (errors[fieldName]) {
-          setErrors(prev => ({ ...prev, [fieldName]: null }));
-        }
+        updateImage(fieldName, base64DataUri, asset.fileName || `${imageType === 'front' ? 'Front' : 'Back'} ID Image`);
+      } else if (result.canceled) {
+        // User cancelled, just reset loading state
+        console.log('Image picker cancelled by user');
+      } else {
+        // No assets returned, reset loading state
+        console.log('No assets returned from image picker');
       }
     } catch (error) {
+      console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
-      // Clear the appropriate loading state based on image type
-      if (imageType === 'front') {
-        setIsUploadingFront(false);
-      } else {
-        setIsUploadingBack(false);
-      }
+      const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
+      setLoadingState(loadingField, false);
     }
   };
 
   const handleRemoveImage = (imageType) => {
     const fieldName = imageType === 'front' ? 'frontIdImage' : 'backIdImage';
-    const fileNameField = imageType === 'front' ? 'frontIdImageName' : 'backIdImageName';
-    setForm(prev => ({ ...prev, [fieldName]: null, [fileNameField]: "" }));
-    // Clear any existing error when removing image
-    if (errors[fieldName]) {
-      setErrors(prev => ({ ...prev, [fieldName]: null }));
-    }
+    const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
+    
+    // Clear any loading state for this image type
+    setLoadingState(loadingField, false);
+    
+    // Remove the image
+    updateImage(fieldName, null, "");
   };
 
   // Helper function to convert image URI to base64
@@ -174,100 +159,81 @@ export default function Register4() {
     }
   };
 
-  // Function to clear all forms and reset navigation stack
-  const clearAllForms = () => {
-    try {
-      // Reset the current form state
-      setForm({
-        frontIdImage: null,
-        frontIdImageName: "",
-        backIdImage: null,
-        backIdImageName: ""
-      });
-      
-      // Clear any errors
-      setErrors({});
-      
-      // Clear any loading states
-      setIsRegistering(false);
-      setIsUploadingFront(false);
-      setIsUploadingBack(false);
-    } catch (error) {
-    }
-  };
-
   const handleSuccessToastClose = () => {
     setShowSuccessToast(false);
-    clearAllForms();
-    // Use replace to prevent multiple landing screens
     router.replace('/landing');
   };
 
   const handleContinue = async () => {
     if (isNavigating || isRegistering) return; // Prevent multiple rapid clicks
     
-    if (!validateForm()) return;
-    
-    setIsRegistering(true);
+     console.log('Register4: handleContinue called');
+    if (!validateForm()) {
+      console.log('Register4: Form validation failed');
+      return;
+    }
+
+    console.log('Register4: Form validation passed, starting registration...');
+    setRegistering(true);
     setIsNavigating(true);
-    
+
     try {
-      // Convert images to base64 format
-      const profileImageBase64 = await convertImageToBase64(userData.profileImage || userData.profileimage);
-      const frontIdImageBase64 = await convertImageToBase64(form.frontIdImage);
-      const backIdImageBase64 = await convertImageToBase64(form.backIdImage);
+      // Get all registration data from context
+      const registrationData = getRegistrationData();
       
-      // Combine all data from register1, register2, register3, and register4
-      const registrationData = {
-        // From register1 (basic user info)
-        firstname: userData.firstName || userData.firstname,
-        lastname: userData.lastName || userData.lastname,
-        email: userData.email,
-        phonenumber: userData.phone || userData.phonenumber,
-        username: userData.username,
-        password: userData.password,
-        
-        // From register2 (business details)
-        farmname: userData.farmName || userData.farmname,
-        farmlocation: userData.farmLocation || userData.farmlocation,
-        pickuplocation: userData.pickupLocation || userData.pickuplocation,
-        inquiryemail: userData.customerEmail || userData.inquiryemail,
-        profileimage: profileImageBase64,
-        businessdescription: userData.businessDescription || userData.businessdescription,
-        
-        // From register3 (payment details)
-        cardNumber: userData.cardNumber,
-        cardExpiry: userData.expiry,
-        cardCVC: userData.cvc,
-        cardEmail: userData.cardEmail,
-        
-        // From register4 (ID images)
-        frontIdImage: frontIdImageBase64,
-        backIdImage: backIdImageBase64
-      };
+      // Use comprehensive validation
+      const validation = validateCompleteRegistration();
+      if (!validation.isValid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      console.log('Register4: All validation passed, sending data to server...');
+      console.log('Register4: Registration data keys:', Object.keys(registrationData));
+      console.log('Register4: Image fields present:', Object.keys(registrationData).filter(key => key.includes('image')));
 
       const registerResponse = await fetch(`${API_BASE_URL}/farmers/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(registrationData)
       });
 
+      console.log('Register4: Response status:', registerResponse.status);
+
       const result = await registerResponse.json();
+      console.log('Register4: Response data:', result);
       
-      if (!result.success) {
-        throw new Error(result.message || 'Registration failed');
+      if (!registerResponse.ok) {
+        const serverMsg = result.message || result.error || result.details || `HTTP ${registerResponse.status}`;
+        console.error('Register4: Registration failed:', serverMsg);
+        throw new Error(serverMsg);
       }
+
+      if (!result.success) {
+        const serverMsg = result.message || result.error || 'Registration failed';
+        console.error('Register4: Registration failed:', serverMsg);
+        throw new Error(serverMsg);
+      }
+
+      console.log('Register4: Registration successful!');
       
+      // Clear registration data after successful registration
+      resetRegistration();
+      
+      // Success path: show toast
       setShowSuccessToast(true);
       
     } catch (error) {
+      console.error('Register4: Registration error:', error);
       Alert.alert(
         'Registration Failed', 
         error.message || 'An error occurred during registration. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {
-      setIsRegistering(false);
+      setRegistering(false);
       // Reset navigation state after a short delay
       setTimeout(() => setIsNavigating(false), 1000);
     }
@@ -305,20 +271,20 @@ export default function Register4() {
       <View style={styles.section}>
         {/* Front ID Image */}
         <View style={styles.imageSection}>
-          {!form.frontIdImage ? (
+          {!frontIdImage ? (
             <TouchableOpacity 
               style={[styles.imageUploadButton, errors.frontIdImage && styles.inputError]} 
               onPress={() => handleImageUpload('front')}
-              disabled={isUploadingFront}
+              disabled={isUploadingFrontId}
             >
               <View style={styles.imageUploadContent}>
-                {isUploadingFront ? (
+                {isUploadingFrontId ? (
                   <ActivityIndicator size="small" color={errors.frontIdImage ? "#FF3B30" : "#0b6623"} />
                 ) : (
                   <Ionicons name="image-outline" size={24} color={errors.frontIdImage ? "#FF3B30" : "#0b6623"} />
                 )}
                 <Text style={[styles.imageUploadText, errors.frontIdImage && styles.errorText]}>
-                  {isUploadingFront ? "Uploading..." : (errors.frontIdImage || "Browse (Front Valid ID Image)")}
+                  {isUploadingFrontId ? "Uploading..." : (errors.frontIdImage || "Browse (Front Valid ID Image)")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -326,7 +292,7 @@ export default function Register4() {
             <View style={[styles.imagePreviewContainer, errors.frontIdImage && styles.inputError]}>
               <View style={styles.imageInfoContainer}>
                 <Text style={styles.imageFileName} numberOfLines={1}>
-                  {form.frontIdImageName}
+                  {frontIdImageName}
                 </Text>
                 <TouchableOpacity onPress={() => handleRemoveImage('front')} style={styles.cancelButton}>
                   <MaterialIcons name="close" size={20} color="#FF3B30" />
@@ -338,20 +304,20 @@ export default function Register4() {
 
         {/* Back ID Image */}
         <View style={styles.imageSection}>
-          {!form.backIdImage ? (
+          {!backIdImage ? (
             <TouchableOpacity 
               style={[styles.imageUploadButton, errors.backIdImage && styles.inputError]} 
               onPress={() => handleImageUpload('back')}
-              disabled={isUploadingBack}
+              disabled={isUploadingBackId}
             >
               <View style={styles.imageUploadContent}>
-                {isUploadingBack ? (
+                {isUploadingBackId ? (
                   <ActivityIndicator size="small" color={errors.backIdImage ? "#FF3B30" : "#0b6623"} />
                 ) : (
                   <Ionicons name="image-outline" size={24} color={errors.backIdImage ? "#FF3B30" : "#0b6623"} />
                 )}
                 <Text style={[styles.imageUploadText, errors.backIdImage && styles.errorText]}>
-                  {isUploadingBack ? "Uploading..." : (errors.backIdImage || "Browse (Back Valid ID Image)")}
+                  {isUploadingBackId ? "Uploading..." : (errors.backIdImage || "Browse (Back Valid ID Image)")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -359,7 +325,7 @@ export default function Register4() {
             <View style={[styles.imagePreviewContainer, errors.backIdImage && styles.inputError]}>
               <View style={styles.imageInfoContainer}>
                 <Text style={styles.imageFileName} numberOfLines={1}>
-                  {form.backIdImageName}
+                  {backIdImageName}
                 </Text>
                 <TouchableOpacity onPress={() => handleRemoveImage('back')} style={styles.cancelButton}>
                   <MaterialIcons name="close" size={20} color="#FF3B30" />
@@ -400,8 +366,9 @@ export default function Register4() {
     <SuccessToast
       visible={showSuccessToast}
       onClose={handleSuccessToastClose}
-      title="Registration Confirmed"
-      message="Your account verification is in progress and may take up to 24 hours. You'll be notified by email once it's complete."
+      title="Registration Successful"
+      message="Your account has been created. Verification may take 1–2 business days, and you will be notified by email once completed.\nClick OK to proceed."
+      duration={0}
     />
     </>
   );

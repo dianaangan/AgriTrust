@@ -48,7 +48,7 @@ export default StyleSheet.create({
   },
   progressFill: {
     height: "100%",
-    width: "35%",
+    width: "20%",
     backgroundColor: colors.primary,
   },
   title: {

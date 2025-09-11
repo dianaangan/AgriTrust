@@ -1,142 +1,123 @@
 import { 
   View, 
   Text, 
-  TextInput, 
   TouchableOpacity, 
   ScrollView,
-  Image,
-  Alert,
   ActivityIndicator,
-  TouchableWithoutFeedback,
+  Image,
+  TextInput,
   KeyboardAvoidingView,
   Platform
 } from "react-native";
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import styles from "../../assets/styles/register2.styles";
-import getColors from "../../constants/colors";
+import styles, { PLACEHOLDER_COLOR } from "../../assets/styles/register2.styles";
 import { API_BASE_URL } from "../../constants/config";
-
-const colors = getColors('light');
+import { useRegistration } from "../../contexts/RegistrationContext";
 
 export default function Register2() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const { 
+    cardNumber,
+    expiry,
+    cvc,
+    cardEmail,
+    firstName,
+    lastName,
+    updateField,
+    setStep,
+    errors,
+    setErrors,
+    clearErrors,
+    validateCurrentStep,
+    isVerifying,
+    setVerifying,
+    isProcessing
+  } = useRegistration();
   
-  // Get user data from register1
-  const userData = params.userData ? JSON.parse(params.userData) : {};
-  
-  const [form, setForm] = useState({
-    vehicleType: userData.vehicleType || "",
-    vehicleModel: userData.vehicleModel || "",
-    vehicleYear: userData.vehicleYear || "",
-    vehicleColor: userData.vehicleColor || "",
-    licensePlate: userData.licensePlate || "",
-    profileImage: userData.profileImage || null,
-    profileImageName: userData.profileImageName || "",
-    licenseFrontImage: userData.licenseFrontImage || null,
-    licenseFrontImageName: userData.licenseFrontImageName || "",
-    licenseBackImage: userData.licenseBackImage || null,
-    licenseBackImageName: userData.licenseBackImageName || ""
-  });
-
-  const [errors, setErrors] = useState({});
   const [isNavigating, setIsNavigating] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  const validateForm = () => {
-    const newErrors = {};
-    const validations = {
-      vehicleType: () => !form.vehicleType.trim() && "Vehicle type is required",
-      vehicleModel: () => !form.vehicleModel.trim() && "Vehicle model is required",
-      vehicleYear: () => !form.vehicleYear.trim() && "Vehicle year is required",
-      vehicleColor: () => !form.vehicleColor.trim() && "Vehicle color is required",
-      licensePlate: () => !form.licensePlate.trim() && "License plate is required",
-      profileImage: () => !form.profileImage && "Profile image is required",
-      licenseFrontImage: () => !form.licenseFrontImage && "Driver's license front image is required",
-      licenseBackImage: () => !form.licenseBackImage && "Driver's license back image is required"
-    };
+  const handleCardChange = (value) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 16);
+    const formatted = digitsOnly.replace(/(.{4})/g, '$1 ').trim();
+    updateField('cardNumber', formatted);
+  };
 
-    Object.entries(validations).forEach(([key, validate]) => {
-      const error = validate();
-      if (error) newErrors[key] = error;
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleExpiryChange = (value) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 4);
+    let formatted = digitsOnly;
+    if (digitsOnly.length >= 3) {
+      formatted = `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+    } else if (digitsOnly.length >= 1 && digitsOnly.length <= 2) {
+      formatted = digitsOnly;
+    }
+    // Auto-prepend 0 if first month digit is >1
+    if (formatted.length === 1 && parseInt(formatted, 10) > 1) {
+      formatted = `0${formatted}`;
+    }
+    updateField('expiry', formatted);
   };
 
   const handleChange = (key, value) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
+    updateField(key, value);
   };
 
-  const handleFocus = (key) => {
-    if (errors[key]) {
-      setErrors((s) => ({ ...s, [key]: null }));
-    }
+  const validateForm = () => {
+    return validateCurrentStep();
   };
 
-  const handleImageUpload = async (imageType) => {
+  // Function to verify billing information with Stripe
+  const verifyBillingInfo = async () => {
     try {
-      setIsUploadingImage(true);
+      setVerifying(true);
       
-      // Request permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant permission to access your photo library');
-        return;
-      }
+      // Parse expiry date
+      const [month, year] = expiry.split('/');
+      const fullYear = `20${year}`;
+      
+      const billingData = {
+        cardNumber: cardNumber.replace(/\s/g, ''),
+        expiryMonth: month,
+        expiryYear: fullYear,
+        cvc: cvc,
+        email: cardEmail,
+        name: `${firstName} ${lastName}` || 'Cardholder'
+      };
 
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // No cropping
-        quality: 0.8,
+      const response = await fetch(`${API_BASE_URL}/stripe/verify-billing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(billingData),
       });
 
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        const fieldName = imageType === 'profile' ? 'profileImage' : 
-                         imageType === 'licenseFront' ? 'licenseFrontImage' : 'licenseBackImage';
-        const fileNameField = imageType === 'profile' ? 'profileImageName' : 
-                             imageType === 'licenseFront' ? 'licenseFrontImageName' : 'licenseBackImageName';
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        throw new Error(`Server returned ${response.status}: ${textResponse.substring(0, 100)}...`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Clear any existing card errors
+        clearErrors();
         
-        setForm(prev => ({
-          ...prev,
-          [fieldName]: asset.uri,
-          [fileNameField]: asset.fileName || `${imageType === 'profile' ? 'Profile' : 
-                          imageType === 'licenseFront' ? 'License Front' : 'License Back'} Image`
-        }));
-        // Clear any existing error
-        if (errors[fieldName]) {
-          setErrors(prev => ({ ...prev, [fieldName]: null }));
-        }
+        return { success: true, data: result };
+      } else {
+        // Set card number error for invalid card
+        setErrors({ cardNumber: "Valid card number" });
+        return { success: false, error: result.message };
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      // Set card number error for network/server issues
+      setErrors({ cardNumber: "Valid card number" });
+      return { success: false, error: error.message };
     } finally {
-      setIsUploadingImage(false);
-    }
-  };
-
-  const handleRemoveImage = (imageType) => {
-    const fieldName = imageType === 'profile' ? 'profileImage' : 
-                     imageType === 'licenseFront' ? 'licenseFrontImage' : 'licenseBackImage';
-    const fileNameField = imageType === 'profile' ? 'profileImageName' : 
-                         imageType === 'licenseFront' ? 'licenseFrontImageName' : 'licenseBackImageName';
-    
-    setForm(prev => ({
-      ...prev,
-      [fieldName]: null,
-      [fileNameField]: ""
-    }));
-    // Clear any existing error when removing image
-    if (errors[fieldName]) {
-      setErrors(prev => ({ ...prev, [fieldName]: null }));
+      setVerifying(false);
     }
   };
 
@@ -144,29 +125,39 @@ export default function Register2() {
     if (isNavigating) return; // Prevent multiple rapid clicks
     
     setIsNavigating(true);
-    // Use replace to prevent navigation stack issues but preserve register1 data
-    router.replace({
-      pathname: "/auth/register1",
-      params: { userData: JSON.stringify({ ...userData }) }
-    });
+    setStep(1);
+    router.replace("/auth/register1");
     
     // Reset navigation state after a short delay
     setTimeout(() => setIsNavigating(false), 1000);
   };
   
-  const handleContinue = () => {
-    if (isNavigating || isUploadingImage) return; // Prevent multiple rapid clicks
+  const handleContinue = async () => {
+    if (isNavigating) return; // Prevent multiple rapid clicks
     
     if (validateForm()) {
       setIsNavigating(true);
-      // Use replace to prevent multiple register3 screens
-      router.replace({
-        pathname: "/auth/register3",
-        params: { userData: JSON.stringify({ ...userData, ...form }) }
-      });
       
-      // Reset navigation state after a short delay
-      setTimeout(() => setIsNavigating(false), 1000);
+      try {
+        // First verify billing information with Stripe
+        const verificationResult = await verifyBillingInfo();
+        
+        if (verificationResult.success) {
+          // Update context with Stripe verification data
+          updateField('stripePaymentMethodId', verificationResult.data.paymentMethodId);
+          updateField('stripePaymentIntentId', verificationResult.data.paymentIntentId);
+          updateField('billingVerified', true);
+          
+          setStep(3);
+          router.replace('/auth/register3');
+        } else {
+          // Error is already set in the verifyBillingInfo function
+          // No need for Alert.alert - error is already displayed inline
+        }
+      } finally {
+        // Reset navigation state after a short delay
+        setTimeout(() => setIsNavigating(false), 1000);
+      }
     }
   };
 
@@ -174,7 +165,7 @@ export default function Register2() {
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView 
         style={styles.scrollView} 
@@ -195,181 +186,80 @@ export default function Register2() {
           </View>
         </View>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Enter Vehicle Details{"\n"} & Upload Documents</Text>
-        <Text style={styles.subtitle}>
-          Please provide your vehicle information and upload required documents.
-        </Text>
-      </View>
-
-      {/* Form Fields */}
-      <View style={styles.formContainer}>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, errors.vehicleType && styles.inputError]}
-            placeholder={errors.vehicleType || "Vehicle Type (e.g., Car, Motorcycle, Van)"}
-            placeholderTextColor={errors.vehicleType ? "#ff3333" : "#999999"}
-            value={errors.vehicleType ? "" : form.vehicleType}
-            onChangeText={(value) => handleChange('vehicleType', value)}
-            onFocus={() => handleFocus('vehicleType')}
-          />
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Transaction Methods</Text>
+          <Text style={styles.subtitle}>Please enter your transaction method and select your preferred mode.</Text>
         </View>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, errors.vehicleModel && styles.inputError]}
-            placeholder={errors.vehicleModel || "Vehicle Model"}
-            placeholderTextColor={errors.vehicleModel ? "#ff3333" : "#999999"}
-            value={errors.vehicleModel ? "" : form.vehicleModel}
-            onChangeText={(value) => handleChange('vehicleModel', value)}
-            onFocus={() => handleFocus('vehicleModel')}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, errors.vehicleYear && styles.inputError]}
-            placeholder={errors.vehicleYear || "Vehicle Year"}
-            placeholderTextColor={errors.vehicleYear ? "#ff3333" : "#999999"}
-            value={errors.vehicleYear ? "" : form.vehicleYear}
-            onChangeText={(value) => handleChange('vehicleYear', value)}
-            keyboardType="numeric"
-            onFocus={() => handleFocus('vehicleYear')}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, errors.vehicleColor && styles.inputError]}
-            placeholder={errors.vehicleColor || "Vehicle Color"}
-            placeholderTextColor={errors.vehicleColor ? "#ff3333" : "#999999"}
-            value={errors.vehicleColor ? "" : form.vehicleColor}
-            onChangeText={(value) => handleChange('vehicleColor', value)}
-            onFocus={() => handleFocus('vehicleColor')}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, errors.licensePlate && styles.inputError]}
-            placeholder={errors.licensePlate || "License Plate Number"}
-            placeholderTextColor={errors.licensePlate ? "#ff3333" : "#999999"}
-            value={errors.licensePlate ? "" : form.licensePlate}
-            onChangeText={(value) => handleChange('licensePlate', value)}
-            onFocus={() => handleFocus('licensePlate')}
-          />
-        </View>
-
-        {/* Profile Image Upload Section */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.imageLabel}>Profile Image</Text>
-          {!form.profileImage ? (
-            <TouchableOpacity 
-              style={[styles.imageUploadButton, errors.profileImage && styles.inputError]} 
-              onPress={() => handleImageUpload('profile')}
-              disabled={isUploadingImage}
-            >
-              <View style={styles.imageUploadContent}>
-                {isUploadingImage ? (
-                  <ActivityIndicator size="small" color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
-                ) : (
-                  <Ionicons name="image-outline" size={24} color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
-                )}
-                <Text style={[styles.imageUploadText, errors.profileImage && styles.errorText]}>
-                  {isUploadingImage ? "Uploading..." : (errors.profileImage || "Browse (Profile Image)")}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={[styles.imagePreviewContainer, errors.profileImage && styles.inputError]}>
-              <View style={styles.imageInfoContainer}>
-                <Text style={styles.imageFileName} numberOfLines={1}>
-                  {form.profileImageName}
-                </Text>
-                <TouchableOpacity onPress={() => handleRemoveImage('profile')} style={styles.cancelButton}>
-                  <MaterialIcons name="close" size={20} color="#FF3B30" />
-                </TouchableOpacity>
-              </View>
+        {/* Card information */}
+        <View style={styles.section}>
+          <Text style={styles.imageLabel}>Card information</Text>
+          <View style={[styles.input, styles.inputWithIcon, {marginBottom: 10}, errors.cardNumber && styles.inputError]}> 
+            <TextInput
+              value={errors.cardNumber ? "" : cardNumber}
+              onChangeText={handleCardChange}
+              placeholder={errors.cardNumber || "1234 1234 1234 1234"}
+              keyboardType="number-pad"
+              placeholderTextColor={errors.cardNumber ? "#ff3333" : PLACEHOLDER_COLOR}
+              style={[styles.textInput, styles.textInputFlex]}
+              maxLength={19}
+            />
+            <Image source={require('../../assets/images/cardsFixed.png')} style={styles.inlineCardLogos} resizeMode="contain" />
+          </View>
+          <View style={[styles.inputRow, {marginBottom: 20}]}> 
+            <View style={[styles.input, styles.inputHalf, errors.expiry && styles.inputError, { marginRight: 6 }]}> 
+              <TextInput
+                value={errors.expiry ? "" : expiry}
+                onChangeText={handleExpiryChange}
+                placeholder={errors.expiry || "MM / YY"}
+                keyboardType="number-pad"
+                placeholderTextColor={errors.expiry ? "#ff3333" : PLACEHOLDER_COLOR}
+                style={styles.textInput}
+                maxLength={5}
+              />
             </View>
-          )}
+            <View style={[styles.input, styles.inputHalf, styles.inputWithIcon, errors.cvc && styles.inputError]}> 
+              <TextInput
+                value={errors.cvc ? "" : cvc}
+                onChangeText={(value) => handleChange('cvc', value)}
+                placeholder={errors.cvc || "CVC"}
+                keyboardType="number-pad"
+                placeholderTextColor={errors.cvc ? "#ff3333" : PLACEHOLDER_COLOR}
+                style={[styles.textInput, styles.textInputFlex]}
+                maxLength={4}
+              />
+              <Image source={require('../../assets/images/creditCardCvc.png')} style={styles.cvcIcon} resizeMode="contain" />
+            </View>
+          </View>
+          <Text style={styles.imageLabel}>Cardholder email</Text>
+          <View style={[styles.input, errors.cardEmail && styles.inputError]}> 
+            <TextInput
+              value={errors.cardEmail ? "" : cardEmail}
+              onChangeText={(value) => handleChange('cardEmail', value)}
+              placeholder={errors.cardEmail || "Email"}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholderTextColor={errors.cardEmail ? "#ff3333" : PLACEHOLDER_COLOR}
+              style={styles.textInput}
+            />
+          </View>
         </View>
 
-        {/* License Front Image Upload Section */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.imageLabel}>Driver's License (Front)</Text>
-          {!form.licenseFrontImage ? (
-            <TouchableOpacity 
-              style={[styles.imageUploadButton, errors.licenseFrontImage && styles.inputError]} 
-              onPress={() => handleImageUpload('licenseFront')}
-              disabled={isUploadingImage}
-            >
-              <View style={styles.imageUploadContent}>
-                {isUploadingImage ? (
-                  <ActivityIndicator size="small" color={errors.licenseFrontImage ? "#FF3B30" : "#0b6623"} />
-                ) : (
-                  <Ionicons name="image-outline" size={24} color={errors.licenseFrontImage ? "#FF3B30" : "#0b6623"} />
-                )}
-                <Text style={[styles.imageUploadText, errors.licenseFrontImage && styles.errorText]}>
-                  {isUploadingImage ? "Uploading..." : (errors.licenseFrontImage || "Browse (License Front)")}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={[styles.imagePreviewContainer, errors.licenseFrontImage && styles.inputError]}>
-              <View style={styles.imageInfoContainer}>
-                <Text style={styles.imageFileName} numberOfLines={1}>
-                  {form.licenseFrontImageName}
-                </Text>
-                <TouchableOpacity onPress={() => handleRemoveImage('licenseFront')} style={styles.cancelButton}>
-                  <MaterialIcons name="close" size={20} color="#FF3B30" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* License Back Image Upload Section */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.imageLabel}>Driver's License (Back)</Text>
-          {!form.licenseBackImage ? (
-            <TouchableOpacity 
-              style={[styles.imageUploadButton, errors.licenseBackImage && styles.inputError]} 
-              onPress={() => handleImageUpload('licenseBack')}
-              disabled={isUploadingImage}
-            >
-              <View style={styles.imageUploadContent}>
-                {isUploadingImage ? (
-                  <ActivityIndicator size="small" color={errors.licenseBackImage ? "#FF3B30" : "#0b6623"} />
-                ) : (
-                  <Ionicons name="image-outline" size={24} color={errors.licenseBackImage ? "#FF3B30" : "#0b6623"} />
-                )}
-                <Text style={[styles.imageUploadText, errors.licenseBackImage && styles.errorText]}>
-                  {isUploadingImage ? "Uploading..." : (errors.licenseBackImage || "Browse (License Back)")}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={[styles.imagePreviewContainer, errors.licenseBackImage && styles.inputError]}>
-              <View style={styles.imageInfoContainer}>
-                <Text style={styles.imageFileName} numberOfLines={1}>
-                  {form.licenseBackImageName}
-                </Text>
-                <TouchableOpacity onPress={() => handleRemoveImage('licenseBack')} style={styles.cancelButton}>
-                  <MaterialIcons name="close" size={20} color="#FF3B30" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
-      </View>
-      
+        {/* Continue Button */}
         <TouchableOpacity 
-          style={[styles.continueButton, isNavigating && styles.continueButtonDisabled]} 
+          style={[styles.continueButton, isVerifying && styles.continueButtonDisabled]} 
           onPress={handleContinue}
-          disabled={isNavigating}
+          disabled={isVerifying}
         >
-          <Text style={styles.continueButtonText}>Continue</Text>
+          {isVerifying ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="white" />
+              <Text style={styles.continueButtonText}>Verifying...</Text>
+            </View>
+          ) : (
+            <Text style={styles.continueButtonText}>Continue</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

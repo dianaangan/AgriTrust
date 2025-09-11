@@ -9,31 +9,39 @@ import {
   ScrollView,
   ActivityIndicator
 } from "react-native";
-import { useState } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
 import styles from "../../assets/styles/register1.styles";
 import { API_BASE_URL } from "../../constants/config";
+import { useNavigationGuard } from "../../hooks/useNavigationGuard";
+import { useRegistration } from "../../contexts/RegistrationContext";
 
 export default function Register1() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const { 
+    firstName, 
+    lastName, 
+    email, 
+    phone, 
+    username, 
+    password, 
+    confirmPassword,
+    updateField,
+    setStep,
+    errors,
+    setErrors,
+    clearErrors,
+    validateCurrentStep,
+    isProcessing
+  } = useRegistration();
   
-  // Get user data if coming back from other steps
-  const userData = params.userData ? JSON.parse(params.userData) : {};
-  
-  const [form, setForm] = useState({
-    firstName: userData.firstName || "",
-    lastName: userData.lastName || "",
-    email: userData.email || "",
-    phone: userData.phone || "",
-    username: userData.username || "",
-    password: userData.password || "",
-    confirmPassword: userData.confirmPassword || "",
-  });
+  const { isNavigating, navigate, cleanup } = useNavigationGuard();
 
-  const [errors, setErrors] = useState({});
-  const [isNavigating, setIsNavigating] = useState(false);
+  // Cleanup on component unmount
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
 
   // Check username availability
   const checkUsernameAvailability = async (username) => {
@@ -57,60 +65,46 @@ export default function Register1() {
   };
 
   const validateForm = async () => {
-    const newErrors = {};
-    const validations = {
-      firstName: () => !form.firstName.trim() && "First name is required",
-      lastName: () => !form.lastName.trim() && "Last name is required",
-      email: () => !form.email.trim() ? "Email is required" : !/\S+@\S+\.\S+/.test(form.email) && "Please enter a valid email",
-      phone: () => !form.phone.trim() ? "Phone number is required" : !/^\d{10,}$/.test(form.phone.replace(/\D/g, '')) && "Please enter a valid phone number",
-      username: () => !form.username.trim() ? "User name is required" : form.username.length < 3 && "Username must be at least 3 characters",
-      password: () => !form.password ? "Password is required" : form.password.length < 6 && "Password must be at least 6 characters",
-      confirmPassword: () => !form.confirmPassword ? "Please confirm your password" : form.password !== form.confirmPassword && "Passwords do not match"
-    };
-
-    Object.entries(validations).forEach(([key, validate]) => {
-      const error = validate();
-      if (error) newErrors[key] = error;
-    });
+    // Use context validation for basic fields
+    const isValid = validateCurrentStep();
+    
+    if (!isValid) {
+      return false;
+    }
 
     // Check username availability if username is valid
-    if (!newErrors.username && form.username.trim()) {
+    if (username.trim()) {
       try {
-        const usernameCheck = await checkUsernameAvailability(form.username);
+        const usernameCheck = await checkUsernameAvailability(username);
         if (!usernameCheck.available) {
-          newErrors.username = usernameCheck.message;
+          setErrors(prev => ({ ...prev, username: usernameCheck.message }));
+          return false;
         }
       } catch (error) {
         console.error('Username validation error:', error);
-        newErrors.username = 'Error checking username availability';
+        setErrors(prev => ({ ...prev, username: 'Error checking username availability' }));
+        return false;
       }
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return true;
   };
 
   const handleChange = (key, value) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
+    updateField(key, value);
   };
 
   const handleFocus = (key) => {
     if (errors[key]) {
-      setForm(prev => ({ ...prev, [key]: "" }));
-      setErrors(prev => ({ ...prev, [key]: null }));
+      updateField(key, "");
     }
   };
 
   const handleBack = () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
-    
-    setIsNavigating(true);
-    // Always navigate to landing screen from register1
-    router.replace('/landing');
-    
-    // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 1000);
+    navigate(() => {
+      // Always navigate to landing screen from register1
+      router.replace('/landing');
+    });
   };
   
   const handleContinue = async () => {
@@ -118,27 +112,18 @@ export default function Register1() {
     
     const isValid = await validateForm();
     if (isValid) {
-      setIsNavigating(true);
-      // Use replace to prevent multiple register2 screens
-      router.replace({
-        pathname: "/auth/register2",
-        params: { userData: JSON.stringify({ ...userData, ...form }) }
+      setStep(2);
+      navigate(() => {
+        router.replace("/auth/register2");
       });
-      
-      // Reset navigation state after a short delay
-      setTimeout(() => setIsNavigating(false), 1000);
     }
   };
   
   const handleLogin = () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
-    
-    setIsNavigating(true);
-    // Use replace to prevent multiple login screens
-    router.replace("/auth/login");
-    
-    // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 1000);
+    navigate(() => {
+      // Use replace to prevent multiple login screens
+      router.replace("/auth/login");
+    });
   };
 
   return (
@@ -180,7 +165,7 @@ export default function Register1() {
               placeholderTextColor={errors.username ? "#ff3333" : "#6a6a6a"}
               autoCapitalize="none"
               autoCorrect={false}
-              value={errors.username ? "" : form.username}
+              value={errors.username ? "" : username}
               onChangeText={(t) => handleChange("username", t)}
               onFocus={() => handleFocus("username")}
               style={[styles.input, errors.username && styles.inputError]}
@@ -193,7 +178,7 @@ export default function Register1() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              value={errors.email ? "" : form.email}
+              value={errors.email ? "" : email}
               onChangeText={(t) => handleChange("email", t)}
               onFocus={() => handleFocus("email")}
               style={[styles.input, errors.email && styles.inputError]}
@@ -206,7 +191,7 @@ export default function Register1() {
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
-              value={errors.password ? "" : form.password}
+              value={errors.password ? "" : password}
               onChangeText={(t) => handleChange("password", t)}
               onFocus={() => handleFocus("password")}
               style={[styles.input, errors.password && styles.inputError]}
@@ -219,7 +204,7 @@ export default function Register1() {
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
-              value={errors.confirmPassword ? "" : form.confirmPassword}
+              value={errors.confirmPassword ? "" : confirmPassword}
               onChangeText={(t) => handleChange("confirmPassword", t)}
               onFocus={() => handleFocus("confirmPassword")}
               style={[styles.input, errors.confirmPassword && styles.inputError]}
@@ -229,7 +214,7 @@ export default function Register1() {
             <TextInput
               placeholder={errors.firstName || "First name"}
               placeholderTextColor={errors.firstName ? "#ff3333" : "#6a6a6a"}
-              value={errors.firstName ? "" : form.firstName}
+              value={errors.firstName ? "" : firstName}
               onChangeText={(t) => handleChange("firstName", t)}
               onFocus={() => handleFocus("firstName")}
               style={[styles.input, errors.firstName && styles.inputError]}
@@ -239,7 +224,7 @@ export default function Register1() {
             <TextInput
               placeholder={errors.lastName || "Last name"}
               placeholderTextColor={errors.lastName ? "#ff3333" : "#6a6a6a"}
-              value={errors.lastName ? "" : form.lastName}
+              value={errors.lastName ? "" : lastName}
               onChangeText={(t) => handleChange("lastName", t)}
               onFocus={() => handleFocus("lastName")}
               style={[styles.input, errors.lastName && styles.inputError]}
@@ -251,7 +236,7 @@ export default function Register1() {
               placeholder={errors.phone || "Phone number"}
               placeholderTextColor={errors.phone ? "#ff3333" : "#6a6a6a"}
               keyboardType="phone-pad"
-              value={errors.phone ? "" : form.phone}
+              value={errors.phone ? "" : phone}
               onChangeText={(t) => handleChange("phone", t)}
               onFocus={() => handleFocus("phone")}
               style={[styles.input, errors.phone && styles.inputError]}
@@ -263,11 +248,11 @@ export default function Register1() {
 
           <View style={styles.bottomSection}>
             <TouchableOpacity 
-              style={[styles.continueButton, isNavigating && styles.continueButtonDisabled]} 
+              style={[styles.continueButton, (isNavigating || isProcessing) && styles.continueButtonDisabled]} 
               onPress={handleContinue}
-              disabled={isNavigating}
+              disabled={isNavigating || isProcessing}
             >
-              {isNavigating ? (
+              {(isNavigating || isProcessing) ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#ffffff" />
                   <Text style={styles.continueText}>Validating...</Text>

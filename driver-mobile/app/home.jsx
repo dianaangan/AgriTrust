@@ -1,18 +1,28 @@
 import { View, Text, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import { MaterialIcons } from '@expo/vector-icons';
 import styles from "../assets/styles/home.styles";
+import { useNavigationGuard } from "../hooks/useNavigationGuard";
 
 export default function Home() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { navigate, cleanup } = useNavigationGuard();
   
   // Get user data from login
   const userData = params.userData ? JSON.parse(params.userData) : {};
 
+  // Cleanup on component unmount
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
+
   const handleLogout = () => {
-    // Clear any stored data and navigate to landing
-    router.replace("/landing");
+    navigate(() => {
+      // Clear any stored data and navigate to landing
+      router.replace("/landing");
+    });
   };
 
   return (

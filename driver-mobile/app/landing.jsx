@@ -1,32 +1,30 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "../assets/styles/landing.styles";
+import { useNavigationGuard } from "../hooks/useNavigationGuard";
 
 export default function Landing() {
     const router = useRouter();
-    const [isNavigating, setIsNavigating] = useState(false);
+    const { isNavigating, navigate, cleanup } = useNavigationGuard();
+
+    // Cleanup on component unmount
+    useEffect(() => {
+        return cleanup;
+    }, [cleanup]);
 
     const handleLoginPress = () => {
-        if (isNavigating) return; // Prevent multiple rapid clicks
-        
-        setIsNavigating(true);
-        // Use replace to prevent multiple login screens
-        router.replace("/auth/login");
-        
-        // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 1000);
+        navigate(() => {
+            // Use replace to prevent multiple login screens
+            router.replace("/auth/login");
+        });
     };
 
     const handleGetStarted = () => {
-        if (isNavigating) return; // Prevent multiple rapid clicks
-        
-        setIsNavigating(true);
-        // Use replace to prevent multiple register1 screens
-        router.replace("/auth/register1");
-        
-        // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 1000);
+        navigate(() => {
+            // Use replace to prevent multiple register1 screens
+            router.replace("/auth/register1");
+        });
     };
 
     return (

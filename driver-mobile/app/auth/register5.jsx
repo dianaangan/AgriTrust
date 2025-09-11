@@ -4,7 +4,6 @@ import {
   TouchableOpacity, 
   ScrollView,
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Alert
@@ -14,22 +13,21 @@ import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import styles from "../../assets/styles/register3.styles";
-import { API_BASE_URL } from "../../constants/config";
+import styles from "../../assets/styles/register5.styles";
 import { useRegistration } from "../../contexts/RegistrationContext";
  
 
-export default function Register3() {
+export default function Register5() {
   const router = useRouter();
   const { 
-    profileImage,
-    profileImageName,
-    licenseFrontImage,
-    licenseFrontImageName,
-    licenseBackImage,
-    licenseBackImageName,
-    insuranceImage,
-    insuranceImageName,
+    frontVehicleImage,
+    frontVehicleImageName,
+    backVehicleImage,
+    backVehicleImageName,
+    rightVehicleImage,
+    rightVehicleImageName,
+    leftVehicleImage,
+    leftVehicleImageName,
     updateImage,
     setStep,
     errors,
@@ -38,14 +36,15 @@ export default function Register3() {
     validateCurrentStep,
     isProcessing,
     setProcessing,
-    isUploadingProfile,
-    isUploadingLicenseFront,
-    isUploadingLicenseBack,
-    isUploadingInsurance,
+    isUploadingFrontVehicle,
+    isUploadingBackVehicle,
+    isUploadingRightVehicle,
+    isUploadingLeftVehicle,
     setLoadingState
   } = useRegistration();
-
   
+  const [isNavigating, setIsNavigating] = useState(false);
+
 
   const compressBase64Image = (base64String, maxSizeKB = 1000) => {
     try {
@@ -73,7 +72,7 @@ export default function Register3() {
   const handleImageUpload = async (imageType) => {
     try {
       // Set the appropriate loading state based on image type
-      const loadingField = `isUploading${imageType.charAt(0).toUpperCase() + imageType.slice(1)}`;
+      const loadingField = `isUploading${imageType.charAt(0).toUpperCase() + imageType.slice(1)}Vehicle`;
       setLoadingState(loadingField, true);
       
       // Request permission
@@ -103,10 +102,10 @@ export default function Register3() {
 
         updateImage(fieldName, compressedImage, asset.fileName || getDefaultFileName(imageType));
       } else if (result.canceled) {
-        // User cancelled, just reset loading state
+        // User cancelled the picker, just reset loading state
         console.log('Image picker cancelled by user');
       } else {
-        // No assets returned, reset loading state
+        // No assets returned
         console.log('No assets returned from image picker');
       }
     } catch (error) {
@@ -119,30 +118,30 @@ export default function Register3() {
 
   const getFieldName = (imageType) => {
     const fieldMap = {
-      'profile': 'profileImage',
-      'licenseFront': 'licenseFrontImage',
-      'licenseBack': 'licenseBackImage',
-      'insurance': 'insuranceImage'
+      'front': 'frontVehicleImage',
+      'back': 'backVehicleImage',
+      'right': 'rightVehicleImage',
+      'left': 'leftVehicleImage'
     };
     return fieldMap[imageType];
   };
 
   const getFileNameField = (imageType) => {
     const fieldMap = {
-      'profile': 'profileImageName',
-      'licenseFront': 'licenseFrontImageName',
-      'licenseBack': 'licenseBackImageName',
-      'insurance': 'insuranceImageName'
+      'front': 'frontVehicleImageName',
+      'back': 'backVehicleImageName',
+      'right': 'rightVehicleImageName',
+      'left': 'leftVehicleImageName'
     };
     return fieldMap[imageType];
   };
 
   const getDefaultFileName = (imageType) => {
     const nameMap = {
-      'profile': 'Profile Image',
-      'licenseFront': 'License Front Image',
-      'licenseBack': 'License Back Image',
-      'insurance': 'Insurance Image'
+      'front': 'Front Vehicle Image',
+      'back': 'Back Vehicle Image',
+      'right': 'Right Vehicle Image',
+      'left': 'Left Vehicle Image'
     };
     return nameMap[imageType];
   };
@@ -163,62 +162,56 @@ export default function Register3() {
   };
 
   const handleBack = () => {
-    if (isProcessing) return; // Prevent multiple rapid clicks
+    if (isNavigating) return; // Prevent multiple rapid clicks
     
-    setStep(2);
-    router.replace("/auth/register2");
+    setIsNavigating(true);
+    setStep(4);
+    router.replace("/auth/register4");
+    
+    // Reset navigation state after a short delay
+    setTimeout(() => setIsNavigating(false), 1000);
   };
   
   const handleContinue = async () => {
-    console.log('Register3: handleContinue called');
-    if (isProcessing) return; // Prevent multiple rapid clicks
+    console.log('Register5: handleContinue called');
+    if (isNavigating) return; // Prevent multiple rapid clicks
     
-    console.log('Register3: Validating form...');
-    if (!validateForm()) {
-      console.log('Register3: Form validation failed');
-      return;
-    }
-
-    console.log('Register3: Form validation passed, proceeding to next step...');
-    setProcessing(true);
-    
-    try {
-      console.log('Register3: Images in context:', {
-        profileimage: profileImage?.substring(0, 50) + '...',
-        licensefrontimage: licenseFrontImage?.substring(0, 50) + '...',
-        licensebackimage: licenseBackImage?.substring(0, 50) + '...',
-        insuranceimage: insuranceImage?.substring(0, 50) + '...'
+    console.log('Register5: Validating form...');
+    if (validateForm()) {
+      console.log('Register5: Form validation passed, passing data forward...');
+      setIsNavigating(true);
+      
+      console.log('Register5: Images being passed:', {
+        vehiclefrontimage: frontVehicleImage?.substring(0, 50) + '...',
+        vehiclebackimage: backVehicleImage?.substring(0, 50) + '...',
+        vehiclerightimage: rightVehicleImage?.substring(0, 50) + '...',
+        vehicleleftimage: leftVehicleImage?.substring(0, 50) + '...'
       });
 
-      setStep(4);
-      router.replace('/auth/register4');
-    } catch (error) {
-      console.error('Error processing images:', error);
-      Alert.alert('Error', 'Failed to process images. Please try again.');
-    } finally {
-      setProcessing(false);
+      setStep(6);
+      router.replace('/auth/register6');
     }
   };
 
   const renderUploadButton = (imageType, label, errorKey) => {
     const fieldName = getFieldName(imageType);
     const fileNameField = getFileNameField(imageType);
-    const hasImage = fieldName === 'profileImage' ? profileImage : 
-                    fieldName === 'licenseFrontImage' ? licenseFrontImage :
-                    fieldName === 'licenseBackImage' ? licenseBackImage :
-                    fieldName === 'insuranceImage' ? insuranceImage : null;
+    const hasImage = fieldName === 'frontVehicleImage' ? frontVehicleImage : 
+                    fieldName === 'backVehicleImage' ? backVehicleImage :
+                    fieldName === 'rightVehicleImage' ? rightVehicleImage :
+                    fieldName === 'leftVehicleImage' ? leftVehicleImage : null;
     const hasError = errors[fieldName];
     
     // Get the appropriate loading state for this image type
     let isUploading = false;
-    if (imageType === 'profile') {
-      isUploading = isUploadingProfile;
-    } else if (imageType === 'licenseFront') {
-      isUploading = isUploadingLicenseFront;
-    } else if (imageType === 'licenseBack') {
-      isUploading = isUploadingLicenseBack;
-    } else if (imageType === 'insurance') {
-      isUploading = isUploadingInsurance;
+    if (imageType === 'front') {
+      isUploading = isUploadingFrontVehicle;
+    } else if (imageType === 'back') {
+      isUploading = isUploadingBackVehicle;
+    } else if (imageType === 'right') {
+      isUploading = isUploadingRightVehicle;
+    } else if (imageType === 'left') {
+      isUploading = isUploadingLeftVehicle;
     }
 
     return (
@@ -244,10 +237,10 @@ export default function Register3() {
           <View style={[styles.imagePreviewContainer, hasError && styles.inputError]}>
             <View style={styles.imageInfoContainer}>
               <Text style={styles.imageFileName} numberOfLines={1}>
-                {fieldName === 'profileImage' ? profileImageName : 
-                 fieldName === 'licenseFrontImage' ? licenseFrontImageName :
-                 fieldName === 'licenseBackImage' ? licenseBackImageName :
-                 fieldName === 'insuranceImage' ? insuranceImageName : ''}
+                {fieldName === 'frontVehicleImage' ? frontVehicleImageName : 
+                 fieldName === 'backVehicleImage' ? backVehicleImageName :
+                 fieldName === 'rightVehicleImage' ? rightVehicleImageName :
+                 fieldName === 'leftVehicleImage' ? leftVehicleImageName : ''}
               </Text>
               <TouchableOpacity onPress={() => handleRemoveImage(imageType)} style={styles.cancelButton}>
                 <MaterialIcons name="close" size={20} color="#FF3B30" />
@@ -286,33 +279,25 @@ export default function Register3() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Provide your photo, Driver's License, and Insurance.</Text>
-          <Text style={styles.subtitle}>Submit a formal photo, Driver's License (front & back), and Insurance with all details visible.</Text>
+          <Text style={styles.title}>Upload Vehicle Photos</Text>
+          <Text style={styles.subtitle}>Submit well-lit vehicle photos: front, back, sides (Left, Right).</Text>
         </View>
 
         {/* Upload Sections */}
         <View style={styles.section}>
-          {renderUploadButton('profile', 'Profile Image', 'profileImage')}
-          {renderUploadButton('licenseFront', 'License Front Image', 'licenseFrontImage')}
-          {renderUploadButton('licenseBack', 'License Back Image', 'licenseBackImage')}
-          {renderUploadButton('insurance', 'Insurance Image', 'insuranceImage')}
+          {renderUploadButton('front', 'Front Vehicle Image', 'frontVehicleImage')}
+          {renderUploadButton('back', 'Back Vehicle Image', 'backVehicleImage')}
+          {renderUploadButton('right', 'Right Vehicle Image', 'rightVehicleImage')}
+          {renderUploadButton('left', 'Left Vehicle Image', 'leftVehicleImage')}
         </View>
 
-         {/* Continue Button */}
-         <TouchableOpacity 
-           style={[styles.continueButton, isProcessing && styles.continueButtonDisabled]} 
-           onPress={handleContinue}
-           disabled={isProcessing}
-         >
-           {isProcessing ? (
-             <View style={styles.loadingContainer}>
-               <ActivityIndicator size="small" color="#ffffff" />
-               <Text style={styles.continueText}>Processing...</Text>
-             </View>
-           ) : (
-             <Text style={styles.continueButtonText}>Continue</Text>
-           )}
-         </TouchableOpacity>
+        {/* Continue Button */}
+        <TouchableOpacity 
+          style={styles.continueButton} 
+          onPress={handleContinue}
+        >
+          <Text style={styles.continueButtonText}>Continue</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );

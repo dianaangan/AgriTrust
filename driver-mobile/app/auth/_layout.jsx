@@ -9,7 +9,6 @@ export default function AuthLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.primary },
-        animation: 'slide_from_right',
       }}
     >
       <Stack.Screen name="login" />
@@ -17,6 +16,8 @@ export default function AuthLayout() {
       <Stack.Screen name="register2" />
       <Stack.Screen name="register3" />
       <Stack.Screen name="register4" />
+      <Stack.Screen name="register5" />
+      <Stack.Screen name="register6" />
     </Stack>
   );
 }

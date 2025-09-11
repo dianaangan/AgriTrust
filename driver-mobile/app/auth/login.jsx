@@ -1,28 +1,30 @@
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import styles from "../../assets/styles/login.styles";
 import { MaterialIcons } from '@expo/vector-icons';
 import { API_BASE_URL } from "../../constants/config";
+import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 
 export default function Login() {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [isNavigating, setIsNavigating] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const router = useRouter();
+    const { isNavigating, navigate, cleanup } = useNavigationGuard();
+
+    // Cleanup on component unmount
+    useEffect(() => {
+        return cleanup;
+    }, [cleanup]);
 
     const handleBack = () => {
-        if (isNavigating) return; // Prevent multiple rapid clicks
-        
-        setIsNavigating(true);
-        // Use replace to go back to landing to prevent multiple instances
-        router.replace("/landing");
-        
-        // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 1000);
+        navigate(() => {
+            // Use replace to go back to landing to prevent multiple instances
+            router.replace("/landing");
+        });
     };
 
     const handleChange = (key, value) => {
@@ -63,7 +65,6 @@ export default function Login() {
         }
         
         setIsLoading(true);
-        setIsNavigating(true);
         
         try {
             const response = await fetch(`${API_BASE_URL}/deliverydrivers/login`, {
@@ -92,9 +93,11 @@ export default function Login() {
                 };
                 
                 // Navigate directly to home screen without toast
-                router.replace({
-                    pathname: "/home",
-                    params: { userData: JSON.stringify(userData) }
+                navigate(() => {
+                    router.replace({
+                        pathname: "/home",
+                        params: { userData: JSON.stringify(userData) }
+                    });
                 });
             } else {
                 // Handle different error types with inline errors
@@ -111,20 +114,14 @@ export default function Login() {
             setErrors({ general: 'Unable to connect to server. Please check your internet connection.' });
         } finally {
             setIsLoading(false);
-            // Reset navigation state after a short delay
-            setTimeout(() => setIsNavigating(false), 1000);
         }
     };
 
     const handleRegister = () => {
-        if (isNavigating) return; // Prevent multiple rapid clicks
-        
-        setIsNavigating(true);
-        // Use replace to prevent multiple register1 screens
-        router.replace("/auth/register1");
-        
-        // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 1000);
+        navigate(() => {
+            // Use replace to prevent multiple register1 screens
+            router.replace("/auth/register1");
+        });
     };
 
     return (

@@ -10,50 +10,46 @@ import {
   Platform
 } from "react-native";
 import { useState, useEffect } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import styles from "../../assets/styles/register3.styles";
 import { API_BASE_URL } from "../../constants/config";
-import {StripeProvider} from '@stripe/stripe-react-native';
+import { useFarmerRegistration } from "../../contexts/FarmerRegistrationContext";
 
 export default function Register3() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const { 
+    frontIdImage,
+    frontIdImageName,
+    backIdImage,
+    backIdImageName,
+    cardNumber,
+    expiry,
+    cvc,
+    cardEmail,
+    updateField,
+    updateImage,
+    setStep,
+    errors,
+    setErrors,
+    clearErrors,
+    validateCurrentStep,
+    isProcessing,
+    isVerifying,
+    setVerifying,
+    isUploadingFrontId,
+    isUploadingBackId,
+    setLoadingState
+  } = useFarmerRegistration();
   
-  // Get user data from register2
-  const userData = params.userData ? JSON.parse(params.userData) : {};
-  
-  const [form, setForm] = useState({
-    frontIdImage: userData.frontIdImage || null,
-    frontIdImageName: userData.frontIdImageName || "",
-    backIdImage: userData.backIdImage || null,
-    backIdImageName: userData.backIdImageName || ""
-  });
-
-  const [errors, setErrors] = useState({});
-  const [isUploading, setIsUploading] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [cardNumber, setCardNumber] = useState(() => {
-    const savedCardNumber = userData.cardNumber || "";
-    // Format the saved card number with spaces every 4 digits
-    if (savedCardNumber) {
-      const digitsOnly = savedCardNumber.replace(/\D/g, '');
-      return digitsOnly.replace(/(.{4})/g, '$1 ').trim();
-    }
-    return "";
-  });
-  const [expiry, setExpiry] = useState(userData.expiry || "");
-  const [cvc, setCvc] = useState(userData.cvc || "");
-  const [cardEmail, setCardEmail] = useState(userData.cardEmail || "");
 
   const handleCardChange = (value) => {
     const digitsOnly = value.replace(/\D/g, '').slice(0, 16);
     const formatted = digitsOnly.replace(/(.{4})/g, '$1 ').trim();
-    setCardNumber(formatted);
-    if (errors.cardNumber) setErrors(prev => ({ ...prev, cardNumber: null }));
+    updateField('cardNumber', formatted);
   };
 
   const handleExpiryChange = (value) => {
@@ -68,95 +64,71 @@ export default function Register3() {
     if (formatted.length === 1 && parseInt(formatted, 10) > 1) {
       formatted = `0${formatted}`;
     }
-    setExpiry(formatted);
-    if (errors.expiry) setErrors(prev => ({ ...prev, expiry: null }));
+    updateField('expiry', formatted);
   };
 
   const handleChange = (key, value) => {
-    const setters = {
-      cardNumber: setCardNumber,
-      cvc: setCvc,
-      cardEmail: setCardEmail
-    };
-    setters[key](value);
-    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
+    updateField(key, value);
   };
   
 
 
   const validateForm = () => {
-    const newErrors = {};
-    const validations = {
-      cardNumber: () => !cardNumber.trim() && "Valid card number",
-      expiry: () => !expiry.trim() && "Valid expiry",
-      cvc: () => !cvc.trim() && "Valid CVC",
-      cardEmail: () => !cardEmail.trim() ? "Valid email" : !/\S+@\S+\.\S+/.test(cardEmail) && "Valid email"
-    };
-
-    Object.entries(validations).forEach(([key, validate]) => {
-      const error = validate();
-      if (error) newErrors[key] = error;
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return validateCurrentStep();
   };
 
   const handleImageUpload = async (imageType) => {
     try {
-      setIsUploading(true);
+      const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
+      setLoadingState(loadingField, true);
       
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        // Set card number error for permission issues (since this is the main field)
-        setErrors(prev => ({ ...prev, cardNumber: 'Valid card number' }));
+        Alert.alert('Permission needed', 'Please grant permission to access your photo library');
+        setLoadingState(loadingField, false);
         return;
       }
 
       // Launch image picker
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        mediaTypes: 'images',
+        allowsEditing: false, // Disable cropping/editing
+        quality: 0.7, // Higher quality since no cropping
+        base64: true, // This will return base64 data directly
       });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         const fieldName = imageType === 'front' ? 'frontIdImage' : 'backIdImage';
-        const fileNameField = imageType === 'front' ? 'frontIdImageName' : 'backIdImageName';
+        const base64DataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
         
-        setForm(prev => ({
-          ...prev,
-          [fieldName]: asset.uri,
-          [fileNameField]: asset.fileName || `${imageType === 'front' ? 'Front' : 'Back'} ID Image`
-        }));
-        
-        // Clear any existing error
-        if (errors[fieldName]) {
-          setErrors(prev => ({ ...prev, [fieldName]: null }));
-        }
+        updateImage(fieldName, base64DataUri, asset.fileName || `${imageType === 'front' ? 'Front' : 'Back'} ID Image`);
+      } else if (result.canceled) {
+        // User cancelled, just reset loading state
+        console.log('Image picker cancelled by user');
+      } else {
+        // No assets returned, reset loading state
+        console.log('No assets returned from image picker');
       }
     } catch (error) {
-      setErrors(prev => ({ ...prev, cardNumber: 'Valid card number' }));
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
-      setIsUploading(false);
+      const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
+      setLoadingState(loadingField, false);
     }
   };
 
   const handleRemoveImage = (imageType) => {
     const fieldName = imageType === 'front' ? 'frontIdImage' : 'backIdImage';
-    const fileNameField = imageType === 'front' ? 'frontIdImageName' : 'backIdImageName';
+    const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
     
-    setForm(prev => ({
-      ...prev,
-      [fieldName]: null,
-      [fileNameField]: ""
-    }));
+    // Clear any loading state for this image type
+    setLoadingState(loadingField, false);
     
-    // Clear any existing error when removing image
-    if (errors[fieldName]) {
-      setErrors(prev => ({ ...prev, [fieldName]: null }));
-    }
+    // Remove the image
+    updateImage(fieldName, null, "");
   };
 
   // Function to verify billing information with Stripe
@@ -233,11 +205,8 @@ export default function Register3() {
     if (isNavigating) return; // Prevent multiple rapid clicks
     
     setIsNavigating(true);
-    // Use replace to prevent navigation stack issues but preserve previous data
-    router.replace({
-      pathname: "/auth/register2",
-      params: { userData: JSON.stringify({ ...userData }) }
-    });
+    setStep(2);
+    router.replace("/auth/register2");
     
     // Reset navigation state after a short delay
     setTimeout(() => setIsNavigating(false), 1000);
@@ -254,26 +223,13 @@ export default function Register3() {
         const verificationResult = await verifyBillingInfo();
         
         if (verificationResult.success) {
-          const cardData = {
-            cardNumber: cardNumber.replace(/\s/g, ''),
-            expiry, cvc, cardEmail,
-            farmname: userData.farmName || userData.farmname,
-            farmlocation: userData.farmLocation || userData.farmlocation,
-            pickuplocation: userData.pickupLocation || userData.pickuplocation,
-            inquiryemail: userData.customerEmail || userData.inquiryemail,
-            profileimage: userData.profileImage || userData.profileimage,
-            businessdescription: userData.businessDescription || userData.businessdescription,
-            // Add Stripe verification data
-            stripePaymentMethodId: verificationResult.data.paymentMethodId,
-            stripePaymentIntentId: verificationResult.data.paymentIntentId,
-            billingVerified: true
-          };
+          // Update context with Stripe verification data
+          updateField('stripePaymentMethodId', verificationResult.data.paymentMethodId);
+          updateField('stripePaymentIntentId', verificationResult.data.paymentIntentId);
+          updateField('billingVerified', true);
           
-          // Use replace to prevent multiple register4 screens
-          router.replace({
-            pathname: '/auth/register4',
-            params: { userData: JSON.stringify({ ...userData, ...cardData }) }
-          });
+          setStep(4);
+          router.replace('/auth/register4');
         } else {
           // Error is already set in the verifyBillingInfo function
           // No need for Alert.alert - error is already displayed inline
@@ -376,9 +332,9 @@ export default function Register3() {
 
         {/* Continue Button */}
         <TouchableOpacity 
-          style={[styles.continueButton, (isVerifying || isUploading) && styles.continueButtonDisabled]} 
+          style={[styles.continueButton, (isVerifying || isProcessing) && styles.continueButtonDisabled]} 
           onPress={handleRegister}
-          disabled={isVerifying || isUploading}
+          disabled={isVerifying || isProcessing}
         >
           {isVerifying ? (
             <View style={styles.loadingContainer}>

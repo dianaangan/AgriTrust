@@ -7,7 +7,7 @@ const C = getColors('light');
 export default StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: C.surface,
+        backgroundColor: '#FFFFFF',
     },
     backButton: {
         position: 'absolute',

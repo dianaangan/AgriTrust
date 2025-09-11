@@ -12,36 +12,42 @@ import {
   Platform
 } from "react-native";
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import styles from "../../assets/styles/register2.styles";
 import getColors from "../../constants/colors";
 import { API_BASE_URL } from "../../constants/config";
+import { useFarmerRegistration } from "../../contexts/FarmerRegistrationContext";
 
 const colors = getColors('light');
 
 export default function Register2() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  
-  // Get user data from register1
-  const userData = params.userData ? JSON.parse(params.userData) : {};
-  
-  const [form, setForm] = useState({
-    farmName: userData.farmName || "",
-    farmLocation: userData.farmLocation || "",
-    pickupLocation: userData.pickupLocation || "",
-    customerEmail: userData.customerEmail || "", 
-    businessDescription: userData.businessDescription || "",
-    profileImage: userData.profileImage || null,
-    profileImageName: userData.profileImageName || ""
-  });
+  const { 
+    farmName,
+    farmLocation,
+    pickupLocation,
+    customerEmail,
+    businessDescription,
+    profileImage,
+    profileImageName,
+    updateField,
+    updateImage,
+    setStep,
+    errors,
+    setErrors,
+    clearErrors,
+    validateCurrentStep,
+    isProcessing,
+    isUploadingProfile,
+    setLoadingState
+  } = useFarmerRegistration();
 
   const [locationDetails, setLocationDetails] = useState({
-    farmLocation: userData.locationDetails?.farmLocation || null,
-    pickupLocation: userData.locationDetails?.pickupLocation || null
+    farmLocation: null,
+    pickupLocation: null
   });
 
   // Location input states
@@ -54,7 +60,6 @@ export default function Register2() {
   const timeoutRef = useRef(null);
   const [isSelectingSuggestion, setIsSelectingSuggestion] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
 
 
@@ -69,31 +74,12 @@ export default function Register2() {
     };
   }, []);
 
-  const [errors, setErrors] = useState({});
-
   const validateForm = () => {
-    const newErrors = {};
-    const validations = {
-      farmName: () => !form.farmName.trim() && "Farm/Business name is required",
-      farmLocation: () => !form.farmLocation.trim() && "Farm location is required",
-      pickupLocation: () => !form.pickupLocation.trim() && "Pickup location is required",
-      customerEmail: () => !form.customerEmail.trim() ? "Customer email is required" : !/\S+@\S+\.\S+/.test(form.customerEmail) && "Please enter a valid email",
-      businessDescription: () => !form.businessDescription.trim() && "Business description is required",
-      profileImage: () => !form.profileImage && "Profile image is required"
-    };
-
-    Object.entries(validations).forEach(([key, validate]) => {
-      const error = validate();
-      if (error) newErrors[key] = error;
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return validateCurrentStep();
   };
 
   const handleChange = (key, value) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
+    updateField(key, value);
   };
 
   const searchLocations = async (query, locationType) => {
@@ -273,77 +259,67 @@ export default function Register2() {
 
   const handleImageUpload = async () => {
     try {
-      setIsUploadingImage(true);
+      setLoadingState('isUploadingProfile', true);
       
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Please grant permission to access your photo library');
+        setLoadingState('isUploadingProfile', false);
         return;
       }
 
       // Launch image picker
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images',
         allowsEditing: false, // No cropping
-        quality: 0.8,
+        quality: 0.7, // Higher quality since no cropping
+        base64: true, // This will return base64 data directly
       });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        setForm(prev => ({
-          ...prev,
-          profileImage: asset.uri,
-          profileImageName: asset.fileName || 'Profile Image'
-        }));
-        // Clear any existing error
-        if (errors.profileImage) {
-          setErrors(prev => ({ ...prev, profileImage: null }));
-        }
+        const base64DataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        
+        updateImage('profileImage', base64DataUri, asset.fileName || 'Profile Image');
+      } else if (result.canceled) {
+        // User cancelled, just reset loading state
+        console.log('Image picker cancelled by user');
+      } else {
+        // No assets returned, reset loading state
+        console.log('No assets returned from image picker');
       }
     } catch (error) {
+      console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
-      setIsUploadingImage(false);
+      setLoadingState('isUploadingProfile', false);
     }
   };
 
   const handleRemoveImage = () => {
-    setForm(prev => ({
-      ...prev,
-      profileImage: null,
-      profileImageName: ""
-    }));
-    // Clear any existing error when removing image
-    if (errors.profileImage) {
-      setErrors(prev => ({ ...prev, profileImage: null }));
-    }
+    setLoadingState('isUploadingProfile', false);
+    updateImage('profileImage', null, "");
   };
 
   const handleBack = () => {
     if (isNavigating) return; // Prevent multiple rapid clicks
     
     setIsNavigating(true);
-    // Use replace to prevent navigation stack issues but preserve register1 data
-    router.replace({
-      pathname: "/auth/register1",
-      params: { userData: JSON.stringify({ ...userData }) }
-    });
+    setStep(1);
+    router.replace("/auth/register1");
     
     // Reset navigation state after a short delay
     setTimeout(() => setIsNavigating(false), 1000);
   };
   
   const handleContinue = () => {
-    if (isNavigating || isUploadingImage) return; // Prevent multiple rapid clicks
+    if (isNavigating || isUploadingProfile) return; // Prevent multiple rapid clicks
     
     if (validateForm()) {
       setIsNavigating(true);
-      // Use replace to prevent multiple register3 screens
-      router.replace({
-        pathname: "/auth/register3",
-        params: { userData: JSON.stringify({ ...userData, ...form, locationDetails }) }
-      });
+      setStep(3);
+      router.replace("/auth/register3");
       
       // Reset navigation state after a short delay
       setTimeout(() => setIsNavigating(false), 1000);
@@ -390,7 +366,7 @@ export default function Register2() {
             style={[styles.input, errors.farmName && styles.inputError]}
             placeholder={errors.farmName || "Name of your Farm or Business"}
             placeholderTextColor={errors.farmName ? "#ff3333" : "#999999"}
-            value={errors.farmName ? "" : form.farmName}
+            value={errors.farmName ? "" : farmName}
             onChangeText={(value) => handleChange('farmName', value)}
             onFocus={() => handleFocus('farmName')}
           />
@@ -402,14 +378,14 @@ export default function Register2() {
               style={[styles.input, errors.farmLocation && styles.inputError]}
               placeholder={errors.farmLocation || "Farm Location"}
               placeholderTextColor={errors.farmLocation ? "#ff3333" : "#999999"}
-              value={form.farmLocation}
+              value={farmLocation}
               onChangeText={(value) => handleLocationChange('farmLocation', value)}
               onFocus={() => handleFocus('farmLocation')}
               onBlur={() => {
                 // Hide suggestions after a short delay to allow for touch events
                 // But only if no suggestion was just selected
                 setTimeout(() => {
-                  if (!form.farmLocation || form.farmLocation.trim() === '') {
+                  if (!farmLocation || farmLocation.trim() === '') {
                     setShowFarmSuggestions(false);
                   }
                 }, 200);
@@ -418,10 +394,10 @@ export default function Register2() {
             {isLoadingFarm && (
               <ActivityIndicator size="small" color="#0b6623" style={styles.loadingIndicator} />
             )}
-            {form.farmLocation.length > 0 && (
+            {farmLocation.length > 0 && (
               <TouchableOpacity 
                 onPress={() => {
-                  setForm(prev => ({ ...prev, farmLocation: '' }));
+                  updateField('farmLocation', '');
                   setShowFarmSuggestions(false);
                   setFarmLocationSuggestions([]);
                 }} 
@@ -471,14 +447,14 @@ export default function Register2() {
               style={[styles.input, errors.pickupLocation && styles.inputError]}
               placeholder={errors.pickupLocation || "Delivery Pick-up Location"}
               placeholderTextColor={errors.pickupLocation ? "#ff3333" : "#999999"}
-              value={form.pickupLocation}
+              value={pickupLocation}
               onChangeText={(value) => handleLocationChange('pickupLocation', value)}
               onFocus={() => handleFocus('pickupLocation')}
               onBlur={() => {
                 // Hide suggestions after a short delay to allow for touch events
                 // But only if no suggestion was just selected
                 setTimeout(() => {
-                  if (!form.pickupLocation || form.pickupLocation.trim() === '') {
+                  if (!pickupLocation || pickupLocation.trim() === '') {
                     setShowPickupSuggestions(false);
                   }
                 }, 200);
@@ -487,10 +463,10 @@ export default function Register2() {
             {isLoadingPickup && (
               <ActivityIndicator size="small" color="#0b6623" style={styles.loadingIndicator} />
             )}
-            {form.pickupLocation.length > 0 && (
+            {pickupLocation.length > 0 && (
               <TouchableOpacity 
                 onPress={() => {
-                  setForm(prev => ({ ...prev, pickupLocation: '' }));
+                  updateField('pickupLocation', '');
                   setShowPickupSuggestions(false);
                   setPickupLocationSuggestions([]);
                 }} 
@@ -539,7 +515,7 @@ export default function Register2() {
             style={[styles.input, errors.customerEmail && styles.inputError]}
             placeholder={errors.customerEmail || "Email address for customer inquiries"}
             placeholderTextColor={errors.customerEmail ? "#ff3333" : "#999999"}
-            value={errors.customerEmail ? "" : form.customerEmail}
+            value={errors.customerEmail ? "" : customerEmail}
             onChangeText={(value) => handleChange('customerEmail', value)}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -552,7 +528,7 @@ export default function Register2() {
             style={[styles.textArea, errors.businessDescription && styles.inputError]}
             placeholder={errors.businessDescription || "Business Description"}
             placeholderTextColor={errors.businessDescription ? "#ff3333" : "#999999"}
-            value={errors.businessDescription ? "" : form.businessDescription}
+            value={errors.businessDescription ? "" : businessDescription}
             onChangeText={(value) => handleChange('businessDescription', value)}
             multiline
             numberOfLines={4}
@@ -561,27 +537,29 @@ export default function Register2() {
           />
           <View style={styles.characterCount}>
             <Text style={styles.characterCountText}>
-              {form.businessDescription.length}/255
+              {businessDescription.length}/255
             </Text>
           </View>
         </View>
 
         {/* Image Upload Section */}
         <View style={styles.inputContainer}>
-          {!form.profileImage ? (
+          {!profileImage ? (
             <TouchableOpacity 
               style={[styles.imageUploadButton, errors.profileImage && styles.inputError]} 
               onPress={handleImageUpload}
-              disabled={isUploadingImage}
+              disabled={isUploadingProfile}
             >
               <View style={styles.imageUploadContent}>
-                {isUploadingImage ? (
-                  <ActivityIndicator size="small" color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
-                ) : (
-                  <Ionicons name="image-outline" size={24} color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
-                )}
+                <View style={styles.iconContainer}>
+                  {isUploadingProfile ? (
+                    <ActivityIndicator size="small" color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
+                  ) : (
+                    <Ionicons name="image-outline" size={24} color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
+                  )}
+                </View>
                 <Text style={[styles.imageUploadText, errors.profileImage && styles.errorText]}>
-                  {isUploadingImage ? "Uploading..." : (errors.profileImage || "Browse (Profile Image)")}
+                  {isUploadingProfile ? "Uploading..." : (errors.profileImage || "Browse (Profile Image)")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -589,7 +567,7 @@ export default function Register2() {
              <View style={[styles.imagePreviewContainer, errors.profileImage && styles.inputError]}>
                <View style={styles.imageInfoContainer}>
                  <Text style={styles.imageFileName} numberOfLines={1}>
-                   {form.profileImageName}
+                   {profileImageName}
                  </Text>
                  <TouchableOpacity onPress={handleRemoveImage} style={styles.cancelButton}>
                    <MaterialIcons name="close" size={20} color="#FF3B30" />

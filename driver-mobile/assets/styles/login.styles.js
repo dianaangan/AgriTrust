@@ -7,7 +7,7 @@ const C = getColors('light');
 export default StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: C.surface,
+        backgroundColor: '#FFFFFF',
     },
     backButton: {
         position: 'absolute',
@@ -101,7 +101,7 @@ export default StyleSheet.create({
     loadingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        // gap is not supported on RN Web StyleSheet
     },
     registerContainer: {
         position: 'absolute',

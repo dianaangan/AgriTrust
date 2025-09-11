@@ -27,7 +27,7 @@ export default StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 24,
+    borderRadius: 30,
     backgroundColor: colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
@@ -49,12 +49,7 @@ export default StyleSheet.create({
 
   progressFill: {
     height: '100%',
-    width: '50%', // Half filled to show progress
     backgroundColor: colors.primary,
-  },
-
-  header: {
-    marginBottom: 30,
   },
 
   title: {
@@ -72,11 +67,7 @@ export default StyleSheet.create({
     fontSize: 15,
     color: colors.muted,
     lineHeight: 22,
-    marginBottom: 0,
-  },
-
-  section: {
-    marginBottom: 25,
+    marginBottom: 30,
   },
 
   // Image Upload Styles
@@ -103,7 +94,11 @@ export default StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     fontWeight: '500',
-    marginLeft: 6,
+    marginLeft: 12,
+  },
+
+  imageUploadErrorText: {
+    color: '#FF3B30',
   },
 
   imagePreviewContainer: {
@@ -143,33 +138,73 @@ export default StyleSheet.create({
     borderColor: '#FFE5E5',
   },
 
-  // Continue Button
-  continueButton: {
+  // Checkbox Styles
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 30,
+    paddingHorizontal: 4,
+  },
+
+  checkbox: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+    marginTop: 4,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderRadius: 4,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  checkboxText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+
+  checkboxErrorText: {
+    color: '#FF3B30',
+  },
+
+  // Register Button
+  registerButton: {
     width: '100%',
     backgroundColor: colors.primary,
     borderRadius: 28,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     alignSelf: 'center',
-    marginTop: 80,
-    marginBottom: 15,
+    marginTop: 130,
+    marginBottom: 10,
   },
 
-  continueButtonText: {
+  registerButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 18,
   },
 
-  continueButtonDisabled: {
+  registerButtonDisabled: {
     backgroundColor: colors.muted,
     opacity: 0.6,
   },
 
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    // gap is not supported on RN Web StyleSheet
+  // Footer Text
+  footerText: {
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 30,
+  },
+
+  linkText: {
+    fontWeight: '700',
+    color: colors.primary,
   },
 
   // Error Styles
@@ -180,5 +215,13 @@ export default StyleSheet.create({
   errorText: {
     color: '#FF3B30',
     fontSize: 14,
+    marginTop: 4,
+  },
+
+  errorTextBelow: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 6,
+    marginLeft: 4,
   },
 });

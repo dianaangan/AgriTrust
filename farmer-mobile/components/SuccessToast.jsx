@@ -1,26 +1,72 @@
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { styles } from '../assets/styles/successToast.styles';
+import React, { useEffect, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  StyleSheet
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import getColors from '../constants/colors';
 
-const SuccessToast = ({ visible, onClose, title, message }) => {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+const colors = getColors('light');
+const { width } = Dimensions.get('window');
 
-  React.useEffect(() => {
-    if (visible) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(fadeAnim, {
+const SuccessToast = ({ visible, onClose, title, message, duration = 0 }) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const handleClose = useCallback(() => {
+    // Animate out
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 200,
         useNativeDriver: true,
-      }).start();
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  }, [scaleAnim, opacityAnim, onClose]);
+
+  useEffect(() => {
+    if (visible) {
+      // Animate in
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 8,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Auto close after duration (only if duration > 0)
+      if (duration > 0) {
+        const timer = setTimeout(() => {
+          handleClose();
+        }, duration);
+
+        return () => clearTimeout(timer);
+      }
+    } else {
+      // Reset animations when not visible
+      scaleAnim.setValue(0);
+      opacityAnim.setValue(0);
     }
-  }, [visible, fadeAnim]);
+  }, [visible, duration, handleClose, scaleAnim, opacityAnim]);
 
   if (!visible) return null;
 
@@ -28,30 +74,90 @@ const SuccessToast = ({ visible, onClose, title, message }) => {
     <Modal
       transparent
       visible={visible}
-      animationType="fade"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-          {/* Success Icon */}
+        <Animated.View
+          style={[
+            styles.container,
+            {
+              transform: [{ scale: scaleAnim }],
+              opacity: opacityAnim,
+            },
+          ]}
+        >
           <View style={styles.iconContainer}>
-            <Ionicons name="checkmark" size={32} color="#0b6623" />
+            <MaterialIcons name="check-circle" size={48} color={colors.success} />
           </View>
           
-          {/* Title */}
           <Text style={styles.title}>{title}</Text>
-          
-          {/* Message */}
           <Text style={styles.message}>{message}</Text>
           
-          {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Continue</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <Text style={styles.closeButtonText}>OK</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    maxWidth: width * 0.9,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    // Web-friendly shadow
+    boxShadow: '0px 4px 16px rgba(0,0,0,0.25)'
+  },
+  iconContainer: {
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  message: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  closeButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minWidth: 120,
+  },
+  closeButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});
 
 export default SuccessToast;
