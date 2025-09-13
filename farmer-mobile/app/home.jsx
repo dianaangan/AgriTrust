@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, SafeAreaView, StatusBar } from "react-native";
+import { View, Text, TouchableOpacity, StatusBar } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import styles from "../assets/styles/home.styles";
@@ -23,7 +23,6 @@ export default function Home() {
                     firstName: loginData.firstname || loginData.firstName || "Farmer",
                     lastName: loginData.lastname || loginData.lastName || "",
                     email: loginData.email || "",
-                    username: loginData.username || "",
                     verified: loginData.verified || false,
                     token: loginData.token || "",
                     isOnline: true
@@ -144,7 +143,7 @@ export default function Home() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#004b12" />
             {/* Header Section */}
             <View style={styles.header}>
@@ -176,6 +175,6 @@ export default function Home() {
                     ))}
                 </View>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }

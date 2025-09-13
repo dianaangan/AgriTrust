@@ -20,6 +20,7 @@ import styles from "../../assets/styles/register2.styles";
 import getColors from "../../constants/colors";
 import { API_BASE_URL } from "../../constants/config";
 import { useFarmerRegistration } from "../../contexts/FarmerRegistrationContext";
+import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 
 const colors = getColors('light');
 
@@ -59,11 +60,11 @@ export default function Register2() {
   const [isLoadingPickup, setIsLoadingPickup] = useState(false);
   const timeoutRef = useRef(null);
   const [isSelectingSuggestion, setIsSelectingSuggestion] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const { isNavigating, navigate, cleanup } = useNavigationGuard();
 
-
-
-
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -144,8 +145,8 @@ export default function Register2() {
       return;
     }
     
-    // Update form state directly for location fields
-    setForm(prev => ({ ...prev, [key]: value }));
+    // Update form state directly for location fields via context
+    updateField(key, value);
     
     // Clear any errors for this field
     if (errors[key]) {
@@ -214,11 +215,8 @@ export default function Register2() {
     
     const key = locationType === 'farm' ? 'farmLocation' : 'pickupLocation';
     
-    // Update form state directly
-    setForm(prev => {
-      const newForm = { ...prev, [key]: selectedText };
-      return newForm;
-    });
+    // Update form state directly via context
+    updateField(key, selectedText);
     
     // Clear any errors for this field
     if (errors[key]) {
@@ -258,14 +256,16 @@ export default function Register2() {
   };
 
   const handleImageUpload = async () => {
+    const loadingField = 'isUploadingProfile';
+    
     try {
-      setLoadingState('isUploadingProfile', true);
+      setLoadingState(loadingField, true);
       
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Please grant permission to access your photo library');
-        setLoadingState('isUploadingProfile', false);
+        setLoadingState(loadingField, false);
         return;
       }
 
@@ -293,45 +293,39 @@ export default function Register2() {
       console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
-      setLoadingState('isUploadingProfile', false);
+      setLoadingState(loadingField, false);
     }
   };
 
   const handleRemoveImage = () => {
-    setLoadingState('isUploadingProfile', false);
+    const loadingField = 'isUploadingProfile';
+    setLoadingState(loadingField, false);
     updateImage('profileImage', null, "");
   };
 
   const handleBack = () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
-    
-    setIsNavigating(true);
     setStep(1);
-    router.replace("/auth/register1");
-    
-    // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 1000);
+    navigate(() => {
+      router.replace("/auth/register1");
+    });
   };
   
   const handleContinue = () => {
-    if (isNavigating || isUploadingProfile) return; // Prevent multiple rapid clicks
-    
+    if (isUploadingProfile) return;
     if (validateForm()) {
-      setIsNavigating(true);
       setStep(3);
-      router.replace("/auth/register3");
-      
-      // Reset navigation state after a short delay
-      setTimeout(() => setIsNavigating(false), 1000);
+      navigate(() => {
+        router.replace("/auth/register3");
+      });
     }
   };
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContainer}
@@ -551,14 +545,12 @@ export default function Register2() {
               disabled={isUploadingProfile}
             >
               <View style={styles.imageUploadContent}>
-                <View style={styles.iconContainer}>
-                  {isUploadingProfile ? (
-                    <ActivityIndicator size="small" color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
-                  ) : (
-                    <Ionicons name="image-outline" size={24} color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
-                  )}
-                </View>
-                <Text style={[styles.imageUploadText, errors.profileImage && styles.errorText]}>
+                {isUploadingProfile ? (
+                  <ActivityIndicator style={styles.imageUploadIconLeft} size="small" color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
+                ) : (
+                  <Ionicons style={styles.imageUploadIconLeft} name="image-outline" size={24} color={errors.profileImage ? "#FF3B30" : "#0b6623"} />
+                )}
+                <Text style={[styles.imageUploadTextCenter, errors.profileImage && styles.errorText]}>
                   {isUploadingProfile ? "Uploading..." : (errors.profileImage || "Browse (Profile Image)")}
                 </Text>
               </View>

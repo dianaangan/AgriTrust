@@ -70,9 +70,21 @@ export default function Register5() {
   };
 
   const handleImageUpload = async (imageType) => {
+    // Simple mapping approach - moved outside try block for scope
+    const loadingFieldMap = {
+      'front': 'isUploadingFrontVehicle',
+      'back': 'isUploadingBackVehicle', 
+      'right': 'isUploadingRightVehicle',
+      'left': 'isUploadingLeftVehicle'
+    };
+    
+    const loadingField = loadingFieldMap[imageType];
+    if (!loadingField) {
+      console.error('Invalid image type:', imageType);
+      return;
+    }
+    
     try {
-      // Set the appropriate loading state based on image type
-      const loadingField = `isUploading${imageType.charAt(0).toUpperCase() + imageType.slice(1)}Vehicle`;
       setLoadingState(loadingField, true);
       
       // Request permission
@@ -148,12 +160,18 @@ export default function Register5() {
 
   const handleRemoveImage = (imageType) => {
     const fieldName = getFieldName(imageType);
-    const loadingField = `isUploading${imageType.charAt(0).toUpperCase() + imageType.slice(1)}`;
+    const loadingFieldMap = {
+      'front': 'isUploadingFrontVehicle',
+      'back': 'isUploadingBackVehicle', 
+      'right': 'isUploadingRightVehicle',
+      'left': 'isUploadingLeftVehicle'
+    };
     
-    // Clear any loading state for this image type
-    setLoadingState(loadingField, false);
+    const loadingField = loadingFieldMap[imageType];
+    if (loadingField) {
+      setLoadingState(loadingField, false);
+    }
     
-    // Remove the image
     updateImage(fieldName, null, "");
   };
 
@@ -254,10 +272,10 @@ export default function Register5() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContainer}

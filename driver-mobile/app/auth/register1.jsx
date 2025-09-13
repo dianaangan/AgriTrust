@@ -9,9 +9,10 @@ import {
   ScrollView,
   ActivityIndicator
 } from "react-native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import styles from "../../assets/styles/register1.styles";
 import { API_BASE_URL } from "../../constants/config";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
@@ -24,7 +25,6 @@ export default function Register1() {
     lastName, 
     email, 
     phone, 
-    username, 
     password, 
     confirmPassword,
     updateField,
@@ -33,36 +33,20 @@ export default function Register1() {
     setErrors,
     clearErrors,
     validateCurrentStep,
-    isProcessing
+    isProcessing,
+    resetRegistration
   } = useRegistration();
   
   const { isNavigating, navigate, cleanup } = useNavigationGuard();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Cleanup on component unmount
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
 
-  // Check username availability
-  const checkUsernameAvailability = async (username) => {
-    if (!username || username.length < 3) {
-      return { available: false, message: 'Username must be at least 3 characters' };
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/deliverydrivers/check-username?username=${encodeURIComponent(username)}`);
-      const result = await response.json();
-      
-      if (result.success && result.available) {
-        return { available: true, message: 'Username is available' };
-      } else {
-        return { available: false, message: 'Username is already taken' };
-      }
-    } catch (error) {
-      console.error('Username check error:', error);
-      return { available: false, message: 'Error checking username availability' };
-    }
-  };
+  // Username removed; email is the unique identifier
 
   const validateForm = async () => {
     // Use context validation for basic fields
@@ -72,19 +56,26 @@ export default function Register1() {
       return false;
     }
 
-    // Check username availability if username is valid
-    if (username.trim()) {
-      try {
-        const usernameCheck = await checkUsernameAvailability(username);
-        if (!usernameCheck.available) {
-          setErrors(prev => ({ ...prev, username: usernameCheck.message }));
-          return false;
-        }
-      } catch (error) {
-        console.error('Username validation error:', error);
-        setErrors(prev => ({ ...prev, username: 'Error checking username availability' }));
+    // Check if email already exists
+    try {
+      const response = await fetch(`${API_BASE_URL}/deliverydrivers/check-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+
+      const data = await response.json();
+
+      if (data.exists) {
+        setErrors({ email: "Email already exists" });
         return false;
       }
+    } catch (error) {
+      console.error('Email check error:', error);
+      setErrors({ email: "Unable to verify email. Please try again." });
+      return false;
     }
 
     return true;
@@ -101,6 +92,8 @@ export default function Register1() {
   };
 
   const handleBack = () => {
+    // Reset the registration form when going back
+    resetRegistration();
     navigate(() => {
       // Always navigate to landing screen from register1
       router.replace('/landing');
@@ -128,10 +121,10 @@ export default function Register1() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -160,17 +153,7 @@ export default function Register1() {
         <View style={styles.formSection}>
           <View style={styles.form}>
 
-            <TextInput
-              placeholder={errors.username || "User name"}
-              placeholderTextColor={errors.username ? "#ff3333" : "#6a6a6a"}
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={errors.username ? "" : username}
-              onChangeText={(t) => handleChange("username", t)}
-              onFocus={() => handleFocus("username")}
-              style={[styles.input, errors.username && styles.inputError]}
-              returnKeyType="next"
-            />
+            
 
             <TextInput
               placeholder={errors.email || "Email"}
@@ -185,31 +168,55 @@ export default function Register1() {
               returnKeyType="next"
             />
 
-            <TextInput
-              placeholder={errors.password || "Password"}
-              placeholderTextColor={errors.password ? "#ff3333" : "#6a6a6a"}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={errors.password ? "" : password}
-              onChangeText={(t) => handleChange("password", t)}
-              onFocus={() => handleFocus("password")}
-              style={[styles.input, errors.password && styles.inputError]}
-              returnKeyType="next"
-            />
+            <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
+              <TextInput
+                placeholder={errors.password || "Password"}
+                placeholderTextColor={errors.password ? "#ff3333" : "#6a6a6a"}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={errors.password ? "" : password}
+                onChangeText={(t) => handleChange("password", t)}
+                onFocus={() => handleFocus("password")}
+                style={styles.inputFlex}
+                returnKeyType="next"
+              />
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                  size={20} 
+                  color={errors.password ? "#ff3333" : "#6a6a6a"} 
+                />
+              </TouchableOpacity>
+            </View>
 
-            <TextInput
-              placeholder={errors.confirmPassword || "Confirm password"}
-              placeholderTextColor={errors.confirmPassword ? "#ff3333" : "#6a6a6a"}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={errors.confirmPassword ? "" : confirmPassword}
-              onChangeText={(t) => handleChange("confirmPassword", t)}
-              onFocus={() => handleFocus("confirmPassword")}
-              style={[styles.input, errors.confirmPassword && styles.inputError]}
-              returnKeyType="next"
-            />
+            <View style={[styles.inputWrapper, errors.confirmPassword && styles.inputWrapperError]}>
+              <TextInput
+                placeholder={errors.confirmPassword || "Confirm password"}
+                placeholderTextColor={errors.confirmPassword ? "#ff3333" : "#6a6a6a"}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={errors.confirmPassword ? "" : confirmPassword}
+                onChangeText={(t) => handleChange("confirmPassword", t)}
+                onFocus={() => handleFocus("confirmPassword")}
+                style={styles.inputFlex}
+                returnKeyType="next"
+              />
+              <TouchableOpacity 
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons 
+                  name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
+                  size={20} 
+                  color={errors.confirmPassword ? "#ff3333" : "#6a6a6a"} 
+                />
+              </TouchableOpacity>
+            </View>
 
             <TextInput
               placeholder={errors.firstName || "First name"}
@@ -274,3 +281,4 @@ export default function Register1() {
     </KeyboardAvoidingView>
   );
 }
+

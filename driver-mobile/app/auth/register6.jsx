@@ -67,6 +67,10 @@ export default function Register6() {
 
   const handleImageUpload = async (imageType) => {
     const config = getImageConfig(imageType);
+    if (!config.loadingField) {
+      console.error('Invalid image type:', imageType);
+      return;
+    }
     try {
       setLoadingState(config.loadingField, true);
       
@@ -100,6 +104,10 @@ export default function Register6() {
 
   const handleRemoveImage = (imageType) => {
     const config = getImageConfig(imageType);
+    if (!config.loadingField) {
+      console.error('Invalid image type:', imageType);
+      return;
+    }
     setLoadingState(config.loadingField, false);
     updateImage(config.field, null, "");
   };
@@ -210,9 +218,9 @@ export default function Register6() {
 
   return (
     <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
           {/* Navigation Bar */}
@@ -281,7 +289,7 @@ export default function Register6() {
         visible={showSuccessToast}
         onClose={handleToastClose}
         title="Registration Successful"
-        message="Your account has been created. Verification may take 1–2 business days, and you will be notified by email once completed.\nClick OK to proceed."
+        message="Your account has already been created. Verification may take 1-2 business days, and you will be contacted by email once finished. To continue, simply click OK."
         duration={0}
       />
     </KeyboardAvoidingView>

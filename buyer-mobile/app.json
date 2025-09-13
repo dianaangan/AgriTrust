@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "buyer-mobile",
-    "slug": "buyer-mobile",
+    "name": "AgriTrust Buyer",
+    "slug": "agritrust-buyer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -33,7 +33,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

@@ -76,12 +76,37 @@ export default StyleSheet.create({
     backgroundColor: "transparent",
   },
 
+  inputWrapper: {
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: colors.outline,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    marginVertical: 5,
+  },
+
+  inputWrapperError: {
+    borderColor: '#ff3333',
+  },
+
+  inputFlex: {
+    flex: 1,
+    color: colors.text,
+    backgroundColor: "transparent",
+  },
+
+  eyeButton: {
+    padding: 4,
+  },
+
   inputError: {
     borderColor: '#FF3B30', // Red border for error state
   },
   bottomSection: {
     flex: 0,
-    marginTop: 30,
+    marginTop: 80,
     paddingBottom: 25,
   },
   continueButton: {

@@ -28,7 +28,7 @@ export default StyleSheet.create({
         
     },
     welcomeText: {
-        fontSize: 42,
+        fontSize: 40,
         fontFamily: Platform.select({
             ios: 'Georgia',
             android: 'serif',
@@ -38,7 +38,7 @@ export default StyleSheet.create({
         marginBottom: -5,
     },
     welcomeSubText: {
-        fontSize: 42,
+        fontSize: 40,
         fontFamily: Platform.select({
             ios: 'Georgia',
             android: 'serif',

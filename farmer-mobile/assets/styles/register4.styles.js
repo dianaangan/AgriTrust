@@ -85,8 +85,8 @@ export default StyleSheet.create({
 
   imageUploadButton: {
     height: 50,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: colors.outline,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
@@ -107,8 +107,8 @@ export default StyleSheet.create({
 
   imagePreviewContainer: {
     height: 50,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: colors.outline,
     borderRadius: 28,
     paddingHorizontal: 18,
     backgroundColor: 'transparent',

@@ -56,6 +56,39 @@ export default function Register2() {
     if (formatted.length === 1 && parseInt(formatted, 10) > 1) {
       formatted = `0${formatted}`;
     }
+    
+    // Validate month and year when user has entered complete date
+    if (formatted.length === 5) {
+      const [month, year] = formatted.split('/');
+      const monthNum = parseInt(month, 10);
+      const yearNum = parseInt(year, 10);
+      const currentYear = new Date().getFullYear() % 100; // Get last 2 digits of current year
+      const currentMonth = new Date().getMonth() + 1; // Get current month (1-12)
+      
+      // Validate month (1-12)
+      if (monthNum < 1 || monthNum > 12) {
+        setErrors({ expiry: "Invalid month" });
+        return;
+      }
+      
+      // Validate year (not in the past, not too far in future)
+      if (yearNum < currentYear || yearNum > currentYear + 20) {
+        setErrors({ expiry: "Invalid year" });
+        return;
+      }
+      
+      // Check if card is expired (same year but past month)
+      if (yearNum === currentYear && monthNum < currentMonth) {
+        setErrors({ expiry: "Card expired" });
+        return;
+      }
+      
+      // Clear any existing expiry errors if validation passes
+      if (errors.expiry) {
+        clearErrors();
+      }
+    }
+    
     updateField('expiry', formatted);
   };
 
@@ -163,10 +196,10 @@ export default function Register2() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContainer}
@@ -255,7 +288,7 @@ export default function Register2() {
           {isVerifying ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="white" />
-              <Text style={styles.continueButtonText}>Verifying...</Text>
+              <Text style={[styles.continueButtonText, styles.loadingText]}>Verifying...</Text>
             </View>
           ) : (
             <Text style={styles.continueButtonText}>Continue</Text>

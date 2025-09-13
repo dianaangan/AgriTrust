@@ -1,12 +1,15 @@
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import styles from "../../assets/styles/login.styles";
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from "../../constants/config";
+import getColors from "../../constants/colors";
+
+const C = getColors('light');
 
 export default function Login() {
-    const [userName, setUserName] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
@@ -26,8 +29,8 @@ export default function Login() {
     };
 
     const handleChange = (key, value) => {
-        if (key === 'userName') {
-            setUserName(value);
+        if (key === 'email') {
+            setEmail(value);
         } else if (key === 'password') {
             setPassword(value);
         }
@@ -50,8 +53,10 @@ export default function Login() {
         
         // Validate inputs
         const newErrors = {};
-        if (!userName.trim()) {
-            newErrors.userName = 'Username is required';
+        if (!email.trim()) {
+            newErrors.email = 'Email is required';
+        } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+            newErrors.email = 'Enter a valid email';
         }
         if (!password.trim()) {
             newErrors.password = 'Password is required';
@@ -72,7 +77,7 @@ export default function Login() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    username: userName.trim(),
+                    email: email.trim(),
                     password: password.trim()
                 })
             });
@@ -86,7 +91,6 @@ export default function Login() {
                     firstname: result.data.farmer.firstname,
                     lastname: result.data.farmer.lastname,
                     email: result.data.farmer.email,
-                    username: result.data.farmer.username,
                     verified: result.data.farmer.verified,
                     token: result.data.token
                 };
@@ -101,7 +105,7 @@ export default function Login() {
                 if (response.status === 403) {
                     setErrors({ general: result.message || 'Your account is not yet verified. Please wait for admin verification.' });
                 } else if (response.status === 401) {
-                    setErrors({ userName: 'Invalid username', password: 'Invalid password' });
+                    setErrors({ email: 'Invalid email', password: 'Invalid password' });
                 } else {
                     setErrors({ general: result.message || 'An error occurred during login' });
                 }
@@ -128,7 +132,7 @@ export default function Login() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <TouchableOpacity 
                 style={styles.backButton} 
                 onPress={handleBack}
@@ -141,20 +145,22 @@ export default function Login() {
                 <Text style={styles.welcomeText}>Hey Farmer,</Text>
                 <Text style={styles.welcomeSubText}>Welcome to{'\n'}AgriTrust</Text>
 
-                <View style={[styles.inputWrapper, errors.userName && styles.inputWrapperError]}>
-                    <MaterialIcons name="person-outline" size={24} color={errors.userName ? "#ff3333" : "#0b6623"} />
+                <View style={[styles.inputWrapper, errors.email && styles.inputWrapperError]}>
+                    <Ionicons name="mail-outline" size={20} color={errors.email ? "#ff3333" : C.muted} />
                     <TextInput
-                        style={[styles.input, errors.userName && styles.inputError]}
-                        placeholder={errors.userName || "Username"}
-                        placeholderTextColor={errors.userName ? "#ff3333" : "#999999"}
-                        value={errors.userName ? "" : userName}
-                        onChangeText={(value) => handleChange('userName', value)}
-                        onFocus={() => handleFocus('userName')}
+                        style={[styles.input, errors.email && styles.inputError]}
+                        placeholder={errors.email || "Email"}
+                        placeholderTextColor={errors.email ? "#ff3333" : "#999999"}
+                        value={errors.email ? "" : email}
+                        onChangeText={(value) => handleChange('email', value)}
+                        onFocus={() => handleFocus('email')}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
                     />
                 </View>
 
                 <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
-                    <MaterialIcons name="lock-outline" size={24} color={errors.password ? "#ff3333" : "#0b6623"} />
+                    <Ionicons name="lock-closed-outline" size={20} color={errors.password ? "#ff3333" : C.muted} />
                     <TextInput
                         style={[styles.input, errors.password && styles.inputError]}
                         placeholder={errors.password || "Password"}
@@ -165,10 +171,10 @@ export default function Login() {
                         secureTextEntry={!showPassword}
                     />
                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                        <MaterialIcons 
-                            name={showPassword ? "visibility" : "visibility-off"} 
-                            size={24} 
-                            color={errors.password ? "#ff3333" : "#666666"} 
+                        <Ionicons 
+                            name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                            size={20} 
+                            color={errors.password ? "#ff3333" : C.muted} 
                         />
                     </TouchableOpacity>
                 </View>
@@ -186,7 +192,7 @@ export default function Login() {
                     </View>
                 )}
 
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/password-reset/forgot-password')}>
                     <Text style={styles.forgotPassword}>Forgot password?</Text>
                 </TouchableOpacity>
 
@@ -213,6 +219,6 @@ export default function Login() {
                     </TouchableOpacity>
                 </View>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }

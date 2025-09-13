@@ -148,23 +148,34 @@ export default StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent', 
+    paddingHorizontal: 18,
   },
 
   imageUploadContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     width: '100%',
   },
 
-  iconContainer: {
-    marginRight: 24,
+  imageUploadIconLeft: {
+    position: 'absolute',
+    left: 55,
   },
 
   imageUploadText: {
     fontSize: 16,
     color: colors.text,
     fontWeight: '500',
+  },
+
+  imageUploadTextCenter: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+    textAlign: 'center',
+    width: '100%',
+    paddingLeft: 50,
   },
 
   imagePreviewContainer: {

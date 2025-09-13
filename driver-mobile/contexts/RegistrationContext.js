@@ -9,7 +9,6 @@ const initialState = {
   lastName: '',
   email: '',
   phone: '',
-  username: '',
   password: '',
   confirmPassword: '',
   
@@ -164,6 +163,10 @@ function registrationReducer(state, action) {
       };
       
     case REGISTRATION_ACTIONS.SET_LOADING_STATE:
+      if (!action.loadingField) {
+        console.error('Reducer: action.loadingField is undefined');
+        return state;
+      }
       return {
         ...state,
         [action.loadingField]: action.isLoading
@@ -253,6 +256,10 @@ export function RegistrationProvider({ children }) {
   };
 
   const setLoadingState = (loadingField, isLoading) => {
+    if (!loadingField) {
+      console.error('setLoadingState: loadingField is undefined or null');
+      return;
+    }
     dispatch({
       type: REGISTRATION_ACTIONS.SET_LOADING_STATE,
       loadingField,
@@ -292,7 +299,7 @@ export function RegistrationProvider({ children }) {
       lastname: cleanString(state.lastName),
       email: cleanString(state.email).toLowerCase(),
       phonenumber: cleanString(state.phone),
-      username: cleanString(state.username),
+      
       password: state.password, // Don't trim password
       
       // Payment info
@@ -346,7 +353,7 @@ export function RegistrationProvider({ children }) {
       lastname: state.lastName,
       email: state.email,
       phonenumber: state.phone,
-      username: state.username,
+      
       password: state.password,
       vehiclebrand: state.brand,
       vehiclemodel: state.model,
@@ -423,7 +430,7 @@ export function RegistrationProvider({ children }) {
           lastName: () => !state.lastName.trim() && "Last name is required",
           email: () => !state.email.trim() ? "Email is required" : !/\S+@\S+\.\S+/.test(state.email) && "Please enter a valid email",
           phone: () => !state.phone.trim() ? "Phone number is required" : !/^\d{10,}$/.test(state.phone.replace(/\D/g, '')) && "Please enter a valid phone number",
-          username: () => !state.username.trim() ? "User name is required" : state.username.length < 3 && "Username must be at least 3 characters",
+          
           password: () => !state.password ? "Password is required" : state.password.length < 6 && "Password must be at least 6 characters",
           confirmPassword: () => !state.confirmPassword ? "Please confirm your password" : state.password !== state.confirmPassword && "Passwords do not match"
         };
@@ -436,7 +443,20 @@ export function RegistrationProvider({ children }) {
       case 2: // Payment Info
         const paymentValidations = {
           cardNumber: () => !state.cardNumber.trim() && "Valid card number",
-          expiry: () => !state.expiry.trim() && "Valid expiry",
+          expiry: () => {
+            if (!state.expiry.trim()) return "Valid expiry";
+            if (state.expiry.length !== 5) return "Valid expiry";
+            const [month, year] = state.expiry.split('/');
+            const monthNum = parseInt(month, 10);
+            const yearNum = parseInt(year, 10);
+            const currentYear = new Date().getFullYear() % 100;
+            const currentMonth = new Date().getMonth() + 1;
+            
+            if (monthNum < 1 || monthNum > 12) return "Invalid month";
+            if (yearNum < currentYear || yearNum > currentYear + 20) return "Invalid year";
+            if (yearNum === currentYear && monthNum < currentMonth) return "Card expired";
+            return null;
+          },
           cvc: () => !state.cvc.trim() && "Valid CVC",
           cardEmail: () => !state.cardEmail.trim() ? "Valid email" : !/\S+@\S+\.\S+/.test(state.cardEmail) && "Valid email"
         };

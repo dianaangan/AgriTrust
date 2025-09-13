@@ -7,7 +7,8 @@ import {
   Image,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert
 } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
@@ -15,8 +16,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import styles from "../../assets/styles/register3.styles";
-import { API_BASE_URL } from "../../constants/config";
+import { API_BASE_URL, resolveApiBaseUrl } from "../../constants/config";
 import { useFarmerRegistration } from "../../contexts/FarmerRegistrationContext";
+import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 
 export default function Register3() {
   const router = useRouter();
@@ -44,7 +46,11 @@ export default function Register3() {
     setLoadingState
   } = useFarmerRegistration();
   
-  const [isNavigating, setIsNavigating] = useState(false);
+  const { isNavigating, navigate, cleanup } = useNavigationGuard();
+
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
 
   const handleCardChange = (value) => {
     const digitsOnly = value.replace(/\D/g, '').slice(0, 16);
@@ -64,6 +70,39 @@ export default function Register3() {
     if (formatted.length === 1 && parseInt(formatted, 10) > 1) {
       formatted = `0${formatted}`;
     }
+    
+    // Validate month and year when user has entered complete date
+    if (formatted.length === 5) {
+      const [month, year] = formatted.split('/');
+      const monthNum = parseInt(month, 10);
+      const yearNum = parseInt(year, 10);
+      const currentYear = new Date().getFullYear() % 100; // Get last 2 digits of current year
+      const currentMonth = new Date().getMonth() + 1; // Get current month (1-12)
+      
+      // Validate month (1-12)
+      if (monthNum < 1 || monthNum > 12) {
+        setErrors({ expiry: "Invalid month" });
+        return;
+      }
+      
+      // Validate year (not in the past, not too far in future)
+      if (yearNum < currentYear || yearNum > currentYear + 20) {
+        setErrors({ expiry: "Invalid year" });
+        return;
+      }
+      
+      // Check if card is expired (same year but past month)
+      if (yearNum === currentYear && monthNum < currentMonth) {
+        setErrors({ expiry: "Card expired" });
+        return;
+      }
+      
+      // Clear any existing expiry errors if validation passes
+      if (errors.expiry) {
+        clearErrors();
+      }
+    }
+    
     updateField('expiry', formatted);
   };
 
@@ -78,8 +117,9 @@ export default function Register3() {
   };
 
   const handleImageUpload = async (imageType) => {
+    const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
+    
     try {
-      const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
       setLoadingState(loadingField, true);
       
       // Request permission
@@ -134,7 +174,7 @@ export default function Register3() {
   // Function to verify billing information with Stripe
   const verifyBillingInfo = async () => {
     try {
-      setIsVerifying(true);
+      setVerifying(true);
       
       // Parse expiry date
       const [month, year] = expiry.split('/');
@@ -146,18 +186,17 @@ export default function Register3() {
         expiryYear: fullYear,
         cvc: cvc,
         email: cardEmail,
-        name: userData.fullName || userData.fullname || 'Cardholder'
+        name: 'Cardholder'
       };
 
-
-      const response = await fetch(`${API_BASE_URL}/stripe/verify-billing`, {
+      const apiBase = await resolveApiBaseUrl();
+      const response = await fetch(`${apiBase}/stripe/verify-billing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(billingData),
       });
-
 
       // Check if response is JSON
       const contentType = response.headers.get('content-type');
@@ -170,83 +209,54 @@ export default function Register3() {
 
       if (result.success) {
         // Clear any existing card errors
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.cardNumber;
-          delete newErrors.expiry;
-          delete newErrors.cvc;
-          delete newErrors.cardEmail;
-          return newErrors;
-        });
+        clearErrors();
         
         return { success: true, data: result };
       } else {
         // Set card number error for invalid card
-        setErrors(prev => ({
-          ...prev,
-          cardNumber: "Valid card number"
-        }));
+        setErrors({ cardNumber: "Valid card number" });
         return { success: false, error: result.message };
       }
     } catch (error) {
-      
       // Set card number error for network/server issues
-      setErrors(prev => ({
-        ...prev,
-        cardNumber: "Valid card number"
-      }));
+      setErrors({ cardNumber: "Valid card number" });
       return { success: false, error: error.message };
     } finally {
-      setIsVerifying(false);
+      setVerifying(false);
     }
   };
 
   const handleBack = () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
-    
-    setIsNavigating(true);
     setStep(2);
-    router.replace("/auth/register2");
-    
-    // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 1000);
+    navigate(() => {
+      router.replace("/auth/register2");
+    });
   };
   
   const handleRegister = async () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
-    
-    if (validateForm()) {
-      setIsNavigating(true);
-      
-      try {
-        // First verify billing information with Stripe
-        const verificationResult = await verifyBillingInfo();
-        
-        if (verificationResult.success) {
-          // Update context with Stripe verification data
-          updateField('stripePaymentMethodId', verificationResult.data.paymentMethodId);
-          updateField('stripePaymentIntentId', verificationResult.data.paymentIntentId);
-          updateField('billingVerified', true);
-          
-          setStep(4);
+    if (!validateForm()) return;
+    try {
+      const verificationResult = await verifyBillingInfo();
+      if (verificationResult.success) {
+        updateField('stripePaymentMethodId', verificationResult.data.paymentMethodId);
+        updateField('stripePaymentIntentId', verificationResult.data.paymentIntentId);
+        updateField('billingVerified', true);
+        setStep(4);
+        navigate(() => {
           router.replace('/auth/register4');
-        } else {
-          // Error is already set in the verifyBillingInfo function
-          // No need for Alert.alert - error is already displayed inline
-        }
-      } finally {
-        // Reset navigation state after a short delay
-        setTimeout(() => setIsNavigating(false), 1000);
+        });
       }
+    } finally {
+      // no-op
     }
   };
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContainer}
@@ -268,8 +278,8 @@ export default function Register3() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Provide your card to continue the transaction</Text>
-        <Text style={styles.subtitle}>Input your stripes card details to proceed with the transaction.</Text>
+        <Text style={styles.title}>Transaction Methods</Text>
+        <Text style={styles.subtitle}>Please enter your transaction method and select your preferred mode.</Text>
       </View>
 
       {/* Card information */}
@@ -292,7 +302,7 @@ export default function Register3() {
             <TextInput
               value={errors.expiry ? "" : expiry}
               onChangeText={handleExpiryChange}
-              placeholder={errors.expiry || "MM/YY"}
+              placeholder={errors.expiry || "MM / YY"}
               keyboardType="number-pad"
               placeholderTextColor={errors.expiry ? "#ff3333" : styles.__placeholderColor}
               style={styles.textInput}
@@ -332,9 +342,9 @@ export default function Register3() {
 
         {/* Continue Button */}
         <TouchableOpacity 
-          style={[styles.continueButton, (isVerifying || isProcessing) && styles.continueButtonDisabled]} 
+          style={[styles.continueButton, isVerifying && styles.continueButtonDisabled]} 
           onPress={handleRegister}
-          disabled={isVerifying || isProcessing}
+          disabled={isVerifying}
         >
           {isVerifying ? (
             <View style={styles.loadingContainer}>

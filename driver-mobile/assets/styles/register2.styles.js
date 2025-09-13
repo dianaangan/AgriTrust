@@ -115,8 +115,11 @@ export default StyleSheet.create({
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    // gap is not supported on RN Web StyleSheet
-    // Use spacing on children instead
+    justifyContent: 'center',
+  },
+
+  loadingText: {
+    marginLeft: 8,
   },
 
   // Error Styles

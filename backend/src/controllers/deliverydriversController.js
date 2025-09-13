@@ -2,34 +2,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cloudinary from '../config/cloudinary.js';
 import DeliveryDriver from '../models/DeliveryDriver.js';
+import { sendPasswordResetEmail } from '../config/email.js';
 
-export async function checkUsernameAvailability(req, res) {
-  try {
-    const { username } = req.query;
-
-    if (!username) {
-      return res.status(400).json({
-        success: false,
-        message: 'Username is required'
-      });
-    }
-
-    const existingDriver = await DeliveryDriver.findOne({ username });
-    
-    res.json({
-      success: true,
-      available: !existingDriver,
-      message: existingDriver ? 'Username is already taken' : 'Username is available'
-    });
-  } catch (error) {
-    console.error('Username availability check error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
-  }
-}
+// Username checks removed; email is the unique identifier
 
 export async function getAllDeliveryDrivers(req, res) {
   try {
@@ -74,7 +49,7 @@ export async function getDeliveryDriver(req, res) {
 export async function registerDeliveryDriver(req, res) {
   try {
     const { 
-      firstname, lastname, email, phonenumber, username, password, 
+      firstname, lastname, email, phonenumber, password, 
       profileimage, licensefrontimage, 
       licensebackimage, vehiclebrand, vehiclemodel, vehicleyearmanufacture, 
       vehicletype, vehicleplatenumber, vehiclecolor, vehicleregistrationimage, 
@@ -84,7 +59,7 @@ export async function registerDeliveryDriver(req, res) {
     } = req.body;
     
     // Validate required fields
-    if (!firstname || !lastname || !email || !phonenumber || !username || !password || 
+    if (!firstname || !lastname || !email || !phonenumber || !password || 
         !profileimage || !licensefrontimage || 
         !licensebackimage || !vehiclebrand || !vehiclemodel || !vehicleyearmanufacture || 
         !vehicletype || !vehicleplatenumber || !vehiclecolor || !vehicleregistrationimage || 
@@ -93,12 +68,12 @@ export async function registerDeliveryDriver(req, res) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Check if username already exists (email may repeat)
-    const existingDriver = await DeliveryDriver.findOne({ username });
-    if (existingDriver) {
+    // Check if email already exists
+    const existingByEmail = await DeliveryDriver.findOne({ email: (email || '').toLowerCase() });
+    if (existingByEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Username is already taken'
+        message: 'Email is already in use'
       });
     }
 
@@ -184,9 +159,8 @@ export async function registerDeliveryDriver(req, res) {
     const deliveryDriver = new DeliveryDriver({
       firstname,
       lastname,
-      email,
+      email: (email || '').toLowerCase(),
       phonenumber,
-      username,
       password: hashedPassword,
 
       profileimage: profileUrl,
@@ -228,7 +202,6 @@ export async function registerDeliveryDriver(req, res) {
         deliveryDriver: {
           id: deliveryDriver._id,
           email: deliveryDriver.email,
-          username: deliveryDriver.username,
           firstname: deliveryDriver.firstname,
           lastname: deliveryDriver.lastname,
           verified: deliveryDriver.verified
@@ -251,7 +224,7 @@ export async function loginDeliveryDriver(req, res) {
     const { email, password } = req.body;
 
     // Find delivery driver by email
-    const deliveryDriver = await DeliveryDriver.findOne({ email });
+    const deliveryDriver = await DeliveryDriver.findOne({ email: (email || '').toLowerCase() });
     if (!deliveryDriver) {
       return res.status(401).json({
         success: false,
@@ -290,7 +263,6 @@ export async function loginDeliveryDriver(req, res) {
         deliveryDriver: {
           id: deliveryDriver._id,
           email: deliveryDriver.email,
-          username: deliveryDriver.username,
           firstname: deliveryDriver.firstname,
           lastname: deliveryDriver.lastname,
           verified: deliveryDriver.verified
@@ -382,5 +354,218 @@ export async function deleteDeliveryDriver(req, res) {
   } catch (error) {
     console.error('Error deleting delivery driver:', error);
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// Request password reset
+export async function requestPasswordReset(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Find delivery driver by email
+    const deliveryDriver = await DeliveryDriver.findOne({ email: email.toLowerCase() });
+    if (!deliveryDriver) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Generate 6-digit reset code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Set expiration time (10 minutes from now)
+    const resetExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Update delivery driver with reset code and expiration
+    await DeliveryDriver.findByIdAndUpdate(deliveryDriver._id, {
+      passwordResetCode: resetCode,
+      passwordResetExpires: resetExpires
+    });
+
+    // Send email with reset code
+    const emailSent = await sendPasswordResetEmail(email, resetCode);
+    
+    if (!emailSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send reset code. Please try again.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Password reset code sent to your email'
+    });
+  } catch (error) {
+    console.error('Request password reset error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Verify reset code
+export async function verifyResetCode(req, res) {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and code are required'
+      });
+    }
+
+    // Find delivery driver by email
+    const deliveryDriver = await DeliveryDriver.findOne({ email: email.toLowerCase() });
+    if (!deliveryDriver) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Check if reset code exists and is not expired
+    if (!deliveryDriver.passwordResetCode || !deliveryDriver.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'No reset code found. Please request a new one.'
+      });
+    }
+
+    if (new Date() > deliveryDriver.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset code has expired. Please request a new one.'
+      });
+    }
+
+    // Verify the code
+    if (deliveryDriver.passwordResetCode !== code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reset code'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Reset code verified successfully'
+    });
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Reset password
+export async function resetPassword(req, res) {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, code, and new password are required'
+      });
+    }
+
+    // Find delivery driver by email
+    const deliveryDriver = await DeliveryDriver.findOne({ email: email.toLowerCase() });
+    if (!deliveryDriver) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Check if reset code exists and is not expired
+    if (!deliveryDriver.passwordResetCode || !deliveryDriver.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'No reset code found. Please request a new one.'
+      });
+    }
+
+    if (new Date() > deliveryDriver.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset code has expired. Please request a new one.'
+      });
+    }
+
+    // Verify the code
+    if (deliveryDriver.passwordResetCode !== code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reset code'
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password and clear reset code
+    await DeliveryDriver.findByIdAndUpdate(deliveryDriver._id, {
+      password: hashedPassword,
+      passwordResetCode: undefined,
+      passwordResetExpires: undefined
+    });
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Check if email exists
+export async function checkEmail(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Check if email exists in database
+    const existingDriver = await DeliveryDriver.findOne({ email: email.toLowerCase() });
+    
+    res.status(200).json({
+      success: true,
+      exists: !!existingDriver
+    });
+  } catch (error) {
+    console.error('Error checking email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
   }
 }

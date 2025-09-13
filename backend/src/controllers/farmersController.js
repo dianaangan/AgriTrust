@@ -2,57 +2,22 @@ import Farmer from '../models/Farmer.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cloudinary from '../config/cloudinary.js';
+import { sendPasswordResetEmail } from '../config/email.js';
 
-// Check if username is available
-export async function checkUsernameAvailability(req, res) {
-  try {
-    const { username } = req.query;
-
-    if (!username) {
-      return res.status(400).json({
-        success: false,
-        message: 'Username is required'
-      });
-    }
-
-    // Check if username exists
-    const existingFarmer = await Farmer.findOne({ username });
-    
-    if (existingFarmer) {
-      return res.json({
-        success: false,
-        available: false,
-        message: 'Username is already taken'
-      });
-    }
-
-    return res.json({
-      success: true,
-      available: true,
-      message: 'Username is available'
-    });
-  } catch (error) {
-    console.error('Username check error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
-  }
-}
+// Username checks removed; email is the unique identifier
 
 // Register farmer
 export async function registerFarmer(req, res) {
   try {
     const {
-      firstname, lastname, email, phonenumber, username, password,
+      firstname, lastname, email, phonenumber, password,
       farmname, farmlocation, pickuplocation, inquiryemail, profileimage,
       businessdescription, cardNumber, cardExpiry, cardCVC, cardEmail,
       frontIdImage, backIdImage
     } = req.body;
 
     // Validate required fields
-    if (!firstname || !lastname || !email || !phonenumber || !username || !password ||
+    if (!firstname || !lastname || !email || !phonenumber || !password ||
         !farmname || !farmlocation || !pickuplocation || !inquiryemail || !profileimage ||
         !businessdescription) {
       return res.status(400).json({
@@ -61,13 +26,12 @@ export async function registerFarmer(req, res) {
       });
     }
 
-    // Check if username already exists
-    const existingFarmer = await Farmer.findOne({ username });
-    
-    if (existingFarmer) {
+    // Check if email already exists
+    const existingByEmail = await Farmer.findOne({ email: email.toLowerCase() });
+    if (existingByEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Username is already taken'
+        message: 'Email is already in use'
       });
     }
 
@@ -103,9 +67,8 @@ export async function registerFarmer(req, res) {
     const farmer = new Farmer({
       firstname,
       lastname,
-      email,
+      email: email.toLowerCase(),
       phonenumber,
-      username,
       password: hashedPassword,
       farmname,
       farmlocation,
@@ -137,7 +100,6 @@ export async function registerFarmer(req, res) {
         farmer: {
           id: farmer._id,
           email: farmer.email,
-          username: farmer.username,
           firstname: farmer.firstname,
           lastname: farmer.lastname,
           verified: farmer.verified
@@ -158,10 +120,10 @@ export async function registerFarmer(req, res) {
 // Login farmer
 export async function loginFarmer(req, res) {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    // Find farmer by username
-    const farmer = await Farmer.findOne({ username });
+    // Find farmer by email
+    const farmer = await Farmer.findOne({ email: (email || '').toLowerCase() });
     if (!farmer) {
       return res.status(401).json({
         success: false,
@@ -200,7 +162,6 @@ export async function loginFarmer(req, res) {
         farmer: {
           id: farmer._id,
           email: farmer.email,
-          username: farmer.username,
           firstname: farmer.firstname,
           lastname: farmer.lastname,
           verified: farmer.verified
@@ -387,6 +348,219 @@ export async function unverifyFarmer(req, res) {
     });
   } catch (error) {
     console.error('Unverify farmer error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Request password reset
+export async function requestPasswordReset(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Find farmer by email
+    const farmer = await Farmer.findOne({ email: email.toLowerCase() });
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Generate 6-digit reset code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Set expiration time (10 minutes from now)
+    const resetExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Update farmer with reset code and expiration
+    await Farmer.findByIdAndUpdate(farmer._id, {
+      passwordResetCode: resetCode,
+      passwordResetExpires: resetExpires
+    });
+
+    // Send email with reset code
+    const emailSent = await sendPasswordResetEmail(email, resetCode);
+    
+    if (!emailSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send reset code. Please try again.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Password reset code sent to your email'
+    });
+  } catch (error) {
+    console.error('Request password reset error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Verify reset code
+export async function verifyResetCode(req, res) {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and code are required'
+      });
+    }
+
+    // Find farmer by email
+    const farmer = await Farmer.findOne({ email: email.toLowerCase() });
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Check if reset code exists and is not expired
+    if (!farmer.passwordResetCode || !farmer.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'No reset code found. Please request a new one.'
+      });
+    }
+
+    if (new Date() > farmer.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset code has expired. Please request a new one.'
+      });
+    }
+
+    // Verify the code
+    if (farmer.passwordResetCode !== code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reset code'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Reset code verified successfully'
+    });
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Reset password
+export async function resetPassword(req, res) {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, code, and new password are required'
+      });
+    }
+
+    // Find farmer by email
+    const farmer = await Farmer.findOne({ email: email.toLowerCase() });
+    if (!farmer) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Check if reset code exists and is not expired
+    if (!farmer.passwordResetCode || !farmer.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'No reset code found. Please request a new one.'
+      });
+    }
+
+    if (new Date() > farmer.passwordResetExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset code has expired. Please request a new one.'
+      });
+    }
+
+    // Verify the code
+    if (farmer.passwordResetCode !== code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reset code'
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password and clear reset code
+    await Farmer.findByIdAndUpdate(farmer._id, {
+      password: hashedPassword,
+      passwordResetCode: undefined,
+      passwordResetExpires: undefined
+    });
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}
+
+// Check if email exists
+export async function checkEmail(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Check if email exists in database
+    const existingFarmer = await Farmer.findOne({ email: email.toLowerCase() });
+    
+    res.status(200).json({
+      success: true,
+      exists: !!existingFarmer
+    });
+  } catch (error) {
+    console.error('Error checking email:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',

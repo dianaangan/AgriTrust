@@ -12,16 +12,11 @@ const deliveryDriverSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: false,
+    unique: true,
   },
   phonenumber: {
     type: String,
     required: true
-  },
-  username: {
-    type: String,
-    required: true,
-    unique: true,
   },
   password: {
     type: String,
@@ -114,6 +109,14 @@ const deliveryDriverSchema = new mongoose.Schema({
   },
   cardEmail: {
     type: String,
+    required: false,
+  },
+  passwordResetCode: {
+    type: String,
+    required: false,
+  },
+  passwordResetExpires: {
+    type: Date,
     required: false,
   }
 }, 

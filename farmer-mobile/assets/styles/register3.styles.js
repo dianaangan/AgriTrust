@@ -96,7 +96,7 @@ export default StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     alignSelf: 'center',
-    marginTop: 135,
+    marginTop: 200,
     marginBottom: 20,
   },
 
@@ -127,7 +127,7 @@ export default StyleSheet.create({
   errorContainer: {
     backgroundColor: '#FFE6E6',
     borderColor: '#FF3B30',
-    borderWidth: 1,
+    borderWidth: 1, 
     borderRadius: 8,
     padding: 12,
     marginBottom: 15,
@@ -152,7 +152,7 @@ export default StyleSheet.create({
     borderColor: colors.outline,
     borderRadius: 25,
     paddingHorizontal: 14,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     justifyContent: 'center',
   },
 

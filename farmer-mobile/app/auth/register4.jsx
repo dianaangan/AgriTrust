@@ -9,15 +9,16 @@ import {
   KeyboardAvoidingView,
   Platform
 } from "react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import styles from "../../assets/styles/register4.styles";
-import { API_BASE_URL } from "../../constants/config";
+import { API_BASE_URL, resolveApiBaseUrl } from "../../constants/config";
 import SuccessToast from "../../components/SuccessToast";
 import { useFarmerRegistration } from "../../contexts/FarmerRegistrationContext";
+import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 
 export default function Register4() {
   const router = useRouter();
@@ -44,19 +45,19 @@ export default function Register4() {
   } = useFarmerRegistration();
 
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const { isNavigating, navigate, cleanup } = useNavigationGuard();
+
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
 
 
 
   const handleBack = () => {
-    if (isNavigating) return; // Prevent multiple rapid clicks
-    
-    setIsNavigating(true);
     setStep(3);
-    router.replace("/auth/register3");
-    
-    // Reset navigation state after a short delay
-    setTimeout(() => setIsNavigating(false), 1000);
+    navigate(() => {
+      router.replace("/auth/register3");
+    });
   };
 
   const validateForm = () => {
@@ -64,8 +65,9 @@ export default function Register4() {
   };
 
   const handleImageUpload = async (imageType) => {
+    const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
+    
     try {
-      const loadingField = imageType === 'front' ? 'isUploadingFrontId' : 'isUploadingBackId';
       setLoadingState(loadingField, true);
       
       // Request permission
@@ -165,33 +167,19 @@ export default function Register4() {
   };
 
   const handleContinue = async () => {
-    if (isNavigating || isRegistering) return; // Prevent multiple rapid clicks
-    
-     console.log('Register4: handleContinue called');
-    if (!validateForm()) {
-      console.log('Register4: Form validation failed');
-      return;
-    }
+    if (isRegistering) return;
+    if (!validateForm()) return;
 
-    console.log('Register4: Form validation passed, starting registration...');
     setRegistering(true);
-    setIsNavigating(true);
-
     try {
-      // Get all registration data from context
       const registrationData = getRegistrationData();
-      
-      // Use comprehensive validation
       const validation = validateCompleteRegistration();
       if (!validation.isValid) {
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
 
-      console.log('Register4: All validation passed, sending data to server...');
-      console.log('Register4: Registration data keys:', Object.keys(registrationData));
-      console.log('Register4: Image fields present:', Object.keys(registrationData).filter(key => key.includes('image')));
-
-      const registerResponse = await fetch(`${API_BASE_URL}/farmers/register`, {
+      const apiBase = await resolveApiBaseUrl();
+      const registerResponse = await fetch(`${apiBase}/farmers/register`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -200,52 +188,28 @@ export default function Register4() {
         body: JSON.stringify(registrationData)
       });
 
-      console.log('Register4: Response status:', registerResponse.status);
-
       const result = await registerResponse.json();
-      console.log('Register4: Response data:', result);
-      
-      if (!registerResponse.ok) {
+      if (!registerResponse.ok || !result.success) {
         const serverMsg = result.message || result.error || result.details || `HTTP ${registerResponse.status}`;
-        console.error('Register4: Registration failed:', serverMsg);
         throw new Error(serverMsg);
       }
 
-      if (!result.success) {
-        const serverMsg = result.message || result.error || 'Registration failed';
-        console.error('Register4: Registration failed:', serverMsg);
-        throw new Error(serverMsg);
-      }
-
-      console.log('Register4: Registration successful!');
-      
-      // Clear registration data after successful registration
       resetRegistration();
-      
-      // Success path: show toast
       setShowSuccessToast(true);
       
     } catch (error) {
-      console.error('Register4: Registration error:', error);
-      Alert.alert(
-        'Registration Failed', 
-        error.message || 'An error occurred during registration. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Registration Failed', error.message || 'An error occurred during registration. Please try again.', [{ text: 'OK' }]);
     } finally {
       setRegistering(false);
-      // Reset navigation state after a short delay
-      setTimeout(() => setIsNavigating(false), 1000);
     }
   };
 
   return (
-    <>
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContainer}
@@ -367,10 +331,9 @@ export default function Register4() {
       visible={showSuccessToast}
       onClose={handleSuccessToastClose}
       title="Registration Successful"
-      message="Your account has been created. Verification may take 1–2 business days, and you will be notified by email once completed.\nClick OK to proceed."
+      message="Your account has already been created. Verification may take 1-2 business days, and you will be contacted by email once finished. To continue, simply click OK."
       duration={0}
     />
-    </>
   );
 }
 

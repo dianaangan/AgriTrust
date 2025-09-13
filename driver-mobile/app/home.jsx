@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StatusBar, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
 import { MaterialIcons } from '@expo/vector-icons';
@@ -26,7 +26,7 @@ export default function Home() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0b6623" />
       
       {/* Header */}
@@ -93,6 +93,6 @@ export default function Home() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -1,15 +1,18 @@
 import express from 'express';
-import { getAllFarmers, getFarmer, registerFarmer, loginFarmer, updateFarmer, deleteFarmer, verifyFarmer, unverifyFarmer, checkUsernameAvailability } from '../controllers/farmersController.js';
+import { getAllFarmers, getFarmer, registerFarmer, loginFarmer, updateFarmer, deleteFarmer, verifyFarmer, unverifyFarmer, requestPasswordReset, verifyResetCode, resetPassword, checkEmail } from '../controllers/farmersController.js';
 import { protectFarmerRoute } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
 // Public routes (no authentication required)
 router.get("/", getAllFarmers);
-router.get("/check-username", checkUsernameAvailability);
 router.get("/:id", getFarmer);
 router.post("/register", registerFarmer);
 router.post("/login", loginFarmer);
+router.post("/forgot-password", requestPasswordReset);
+router.post("/verify-reset-code", verifyResetCode);
+router.post("/reset-password", resetPassword);
+router.post("/check-email", checkEmail);
 
 // Protected routes (authentication required)
 router.put("/:id", protectFarmerRoute, updateFarmer);
